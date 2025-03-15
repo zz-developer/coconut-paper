@@ -1,0 +1,105 @@
+\documentclass{article}
+
+
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2024
+
+
+% ready for submission
+\usepackage[preprint]{neurips_2024}
+
+
+% to compile a preprint version, e.g., for submission to arXiv, add add the
+% [preprint] option:
+%     \usepackage[preprint]{neurips_2024}
+
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+%     \usepackage[final]{neurips_2024}
+
+
+% to avoid loading the natbib package, add option nonatbib:
+%    \usepackage[nonatbib]{neurips_2024}
+
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage[hidelinks]{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+
+\title{\textsc{Coconut} on Small Reasoning Models and Its Potential}
+
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+
+\author{%
+    Zheheng Zhang \\
+    Zhenhai High School \\
+    Zhenhai, Ningbo, Zhejiang, China, 315200 \\
+    \texttt{elliot-zzh@proton.me}
+    \And
+    Chengyu Wu \\
+    Zhenhai High School \\
+    Zhenhai, Ningbo, Zhejiang, China, 315200 \\
+    \texttt{7086cmd@gmail.com}
+}
+
+
+\begin{document}
+    \maketitle
+    \begin{abstract}
+        The abstract paragraph should be indented \nicefrac{1}{2}~inch (3~picas) on
+        both the left- and right-hand margins.
+        Use 10~point type, with a vertical
+        spacing (leading) of 11~points.
+        The word \textbf{Abstract} must be centered,
+        bold, and in point size 12.
+        Two line spaces precede the abstract.
+        The abstract
+        must be limited to one paragraph.
+    \end{abstract}
+
+
+    \section{Introduction}\label{sec:intro}
+
+    The Chain of Continuous Thought (\textsc{Coconut})~\citep{hao2024traininglargelanguagemodels} explores the potential of the latent layer of reasoning, as an alternate to traditional CoT~\citep{DBLP:journals/corr/abs-2201-11903}.
+    Its prior work has shown that the latent layer of continuous reasoning can reduce unnecessary statements, and focus on the core of the problem.
+
+    In January, the DeepSeek team proposed a distillation-based method for implementing a reasoning model via reinforcement learning~\citep{deepseekai2025deepseekr1incentivizingreasoningcapability}, and they applied the approach to the Qwen-2.5B~\citep{qwen2.5} to a reasoning model.
+    Given the limitations of a 2.5B parameter model in reasoning tasks, we aim to assess \textsc{Coconut}’s potential in enhancing its performance.
+
+    \paragraph{Fine-Tuning}
+
+    We are using SFT to adapt the model for \textsc{Coconut}, which involves \texttt{<sot>} and \texttt{<eot>} special tokens as the start and end of the reasoning process, instead of the original \texttt{<think>} and \texttt{</think>}.
+    (The DeepSeek-R1's reproduction indicates that it's just a tag instead of special token.)
+    Since the reasoning procedure is totally hidden, we should use a defined token to determine whether the chain should be terminated or not, instead of wrapping to show it to user.
+
+    \paragraph{Actual Training}
+
+    Then, we are leveraging the demonstrated model to fine-tune them to \textsc{Coconut} progressively, increasing latent reasoning layer at most as possible, through supervised data and reinforcement learning.
+    We prepared Open Thoughts datasets~\citep{opentoughts} to provide the fine-tuning data.
+
+    \paragraph{Evaluation}
+
+    We employ a difficulty-ascending ranking to evaluate its capability, particularly on mathematics.
+    We prepared math problems from SAT, AMC, AIME, to Gaokao mathematics, to Olympics, etc.~to find the maximum potential.
+
+    To improve evaluation accuracy, we also introduced the \texttt{<soa>} (Start of Answer) and \texttt{<eoa>} (End of Answer) tokens to indicate the answer, replacing the commonly used format---using \texttt{\textbackslash boxed} to wrap the answer.
+    Then we can use simple string matching to evaluate the model.
+
+    \bibliographystyle{abbrvnat}  % or another appropriate style
+    \bibliography{main}
+\end{document}
