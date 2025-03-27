@@ -33,7 +33,7 @@
 \usepackage{microtype}      % microtypography
 \usepackage{xcolor}         % colors
 
-\title{\textsc{Coconut} on Small Reasoning Models and Its Potential}
+\title{From Transparent to Opaque: Transforming Explicit Reasoning Models to \textsc{Coconut} via Intermediate FFN Layer}
 
 
 % The \author macro works with any number of authors. There are two commands
@@ -75,30 +75,18 @@
 
     \section{Introduction}\label{sec:intro}
 
-    The Chain of Continuous Thought (\textsc{Coconut})~\citep{hao2024traininglargelanguagemodels} explores the potential of the latent layer of reasoning, as an alternate to traditional CoT~\citep{DBLP:journals/corr/abs-2201-11903}.
+    The Chain of Continuous Thought (\textsc{Coconut})~\citep{hao2024traininglargelanguagemodels} explores the potential of the latent layer of reasoning, as an alternate to traditional explicit CoT~\citep{DBLP:journals/corr/abs-2201-11903} in both reasoning procedure or answering procedure.
     Its prior work has shown that the latent layer of continuous reasoning can reduce unnecessary statements, and focus on the core of the problem.
 
+    These model issued are trained from general-purpose language, being supervised to train from steps of reasoning procedure, to progressively increase its layers of latent reasoning.
+    It's impractical due to lack of customized reasoning data, and the progressive training is significantly less convenient to explicit CoT\@.
+    Hence, we provide a new approach to implement these latent reasoning layer---fine-tuning from explicit reasoning models.
+
     In January, the DeepSeek team proposed a distillation-based method for implementing a reasoning model via reinforcement learning~\citep{deepseekai2025deepseekr1incentivizingreasoningcapability}, and they applied the approach to the Qwen-2.5B~\citep{qwen2.5} to a reasoning model.
-    Given the limitations of a 2.5B parameter model in reasoning tasks, we aim to assess \textsc{Coconut}’s potential in enhancing its performance.
+    Given the limitations of a 2.5B parameter model in reasoning tasks, we aim to implement the \textsc{Coconut} on the small model, and find its potential in reasoning, compared to the original explicit reasoning model.
 
-    \paragraph{Fine-Tuning}
+    \section{Methodology}\label{sec:methodology}
 
-    We are using SFT to adapt the model for \textsc{Coconut}, which involves \texttt{<sot>} and \texttt{<eot>} special tokens as the start and end of the reasoning process, instead of the original \texttt{<think>} and \texttt{</think>}.
-    (The DeepSeek-R1's reproduction indicates that it's just a tag instead of special token.)
-    Since the reasoning procedure is totally hidden, we should use a defined token to determine whether the chain should be terminated or not, instead of wrapping to show it to user.
-
-    \paragraph{Actual Training}
-
-    Then, we are leveraging the demonstrated model to fine-tune them to \textsc{Coconut} progressively, increasing latent reasoning layer at most as possible, through supervised data and reinforcement learning.
-    We prepared Open Thoughts datasets~\citep{opentoughts} to provide the fine-tuning data.
-
-    \paragraph{Evaluation}
-
-    We employ a difficulty-ascending ranking to evaluate its capability, particularly on mathematics.
-    We prepared math problems from SAT, AMC, AIME, to Gaokao mathematics, to Olympics, etc.~to find the maximum potential.
-
-    To improve evaluation accuracy, we also introduced the \texttt{<soa>} (Start of Answer) and \texttt{<eoa>} (End of Answer) tokens to indicate the answer, replacing the commonly used format---using \texttt{\textbackslash boxed} to wrap the answer.
-    Then we can use simple string matching to evaluate the model.
 
     \bibliographystyle{abbrvnat}  % or another appropriate style
     \bibliography{main}
