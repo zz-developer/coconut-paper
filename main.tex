@@ -31,9 +31,11 @@
 \usepackage{amsfonts}       % blackboard math symbols
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
-\usepackage{xcolor}         % colors
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{graphicx}         % colors
 
-\title{From Transparent to Opaque: Transforming Explicit Reasoning Models to \textsc{Coconut} via Intermediate FFN Layer}
+\title{From Transparent to Opaque: Leveraging GRU in Latent Reasoning Chain}
 
 
 % The \author macro works with any number of authors. There are two commands
@@ -82,11 +84,82 @@
     It's impractical due to lack of customized reasoning data, and the progressive training is significantly less convenient to explicit CoT\@.
     Hence, we provide a new approach to implement these latent reasoning layer---fine-tuning from explicit reasoning models.
 
+    In 2014~\citep{DBLP:journals/corr/ChungGCB14}, Chung et al.~proposed the Gated Recurrent Unit.
+    It is firstly leveraged for improving the RNNs, but we found that it is also feasible to be used in latent reasoning chain, to maintain its long-term contextual awareness.
+
     In January, the DeepSeek team proposed a distillation-based method for implementing a reasoning model via reinforcement learning~\citep{deepseekai2025deepseekr1incentivizingreasoningcapability}, and they applied the approach to the Qwen-2.5B~\citep{qwen2.5} to a reasoning model.
     Given the limitations of a 2.5B parameter model in reasoning tasks, we aim to implement the \textsc{Coconut} on the small model, and find its potential in reasoning, compared to the original explicit reasoning model.
 
     \section{Methodology}\label{sec:methodology}
 
+    \subsection{Architecture}\label{subsec:architecture}
+
+    We believe that training a language model from direct answering to latent reasoning is impractical without specialized guidance.
+    Instead, we propose a direct method, alternating the model architecture from purely connection of latent reasoning layers, to a GRU-based latent reasoning chain.
+
+    We deploy a reset gate and an update gate, not during the model architecture, but the reasoning process.
+
+    \subsubsection{Language Model}
+
+    We use the proposed architecture proposed in \textsc{Coconut}~\citep{hao2024traininglargelanguagemodels}.
+    It enables two modes for LLMs---latent mode and the transparent mode.
+
+    \paragraph{Latent Mode}
+    The latent mode is designed to reduce extra computation of decoding reasoning text.
+    Hao et al.~demonstrates that human language is designed to communicate instead of heavily on reasoning, so we believe it's unnecessary for users to always decipher what AI reasons.
+    This mode also exclusively own the gated unit, which will be explained later.
+
+    \paragraph{Transparent Mode}
+    This is the normal mode of what LLMs do.
+    They speak human language, and eventually outputs answer during our research progress.
+
+    \subsubsection{Gated Unit}
+
+    The gated unit is the innovative point of our paper.
+
+    Unlike standard causal models that treat each decoding step as conditionally independent beyond the token history, we introduce a GRU-style gating mechanism in the latent reasoning stage.
+    This gate learns to control information flow and retention, enabling the model to persist and refine internal reasoning states across steps.
+    Effectively, this transforms reasoning from a fully recurrent process into a gated latent update, yielding better consistency and longer-term dependency tracking.
+
+    \subsection{Reinforcement Learning}\label{subsec:reinforcement}
+
+    Inspired by DAPO~\citep{yu2025dapoopensourcellmreinforcement}, we deployed a mechanism that applies standardization considered beyond accuracy.
+
+    \subsubsection{Sampling}
+
+    They key to let model learn is to sample, and filter satisfying result.
+
+    The full sampling procedure is shown in figure~\ref{eq:rl-loss}.
+    We will provide our hyperparameters in appendix.
+
+    \begin{figure}[hhhh]
+        \centering
+        \includegraphics[width=.8\textwidth]{./figures/sampling-procedure}
+        \caption{The sampling procedure. It happends with parallelized compuation, but for the sake of simplicity, we just use one as example.}
+        \label{fig:sampling-procedure}
+    \end{figure}
+
+    \subsubsection{Award Mechanism}
+
+    That's because we're aware that DeepSeek's method unintentionally increased the reasoning procedure into an abnormal length.
+
+    Since its batched, the final formula is given on~\ref{eq:award-machanism}, where $r_i$, $c_i$, and $l_i$ denotes to award, correctness award, and length award respectively.
+
+    \begin{equation}
+        r_i = \dfrac{c_i - \bar{c}}{\sqrt{\sum\left(c_i - \bar{c}\right)^2} + 10^{-6}} + \dfrac{l_i - \bar{l}}{\left\lvert\mathrm{max}\left\{l_i - \bar{l}\right\}\right\rvert + 10^{-6}}
+        \label{eq:award-machanism}
+    \end{equation}
+
+    By adding $10^{-6}$, we can avoid producing \texttt{NaN} if dividing zero.
+    Then we apply these scores to the loss, given by~\ref{eq:rl-loss}.
+    We are also leveraging gradient accumulation during the training procedure.
+
+    \begin{equation}
+        \mathrm{loss} = \sum\mathrm{model\ loss} + \dfrac{\overline{r_i}}{\sum{\mathrm{text\ end\ indices} + 1}}
+        \label{eq:rl-loss}
+    \end{equation}
+
+    And to promote its diversity, we are also applying punishment for being identical.
 
     \bibliographystyle{abbrvnat}  % or another appropriate style
     \bibliography{main}
