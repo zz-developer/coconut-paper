@@ -1,7 +1,7 @@
 \documentclass{article}
 
 
-% if you need to pass options to natbib, use, e.g.:
+% If you need to pass options to natbib, use, e.g.:
 %     \PassOptionsToPackage{numbers, compress}{natbib}
 % before loading neurips_2024
 
@@ -19,7 +19,7 @@
 %     \usepackage[final]{neurips_2024}
 
 
-% to avoid loading the natbib package, add option nonatbib:
+% To avoid loading the natbib package, add the option nonatbib:
 %    \usepackage[nonatbib]{neurips_2024}
 
 
@@ -44,7 +44,7 @@
 % Using \And between authors leaves it to LaTeX to determine where to break the
 % lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
 % authors names on the first line, and the last on the second line, try using
-% \AND instead of \And before the third author name.
+% \AND instead of \And before the third author's name.
 
 
 \author{%
@@ -63,31 +63,25 @@
 \begin{document}
     \maketitle
     \begin{abstract}
-        The abstract paragraph should be indented \nicefrac{1}{2}~inch (3~picas) on
-        both the left- and right-hand margins.
-        Use 10~point type, with a vertical
-        spacing (leading) of 11~points.
-        The word \textbf{Abstract} must be centered,
-        bold, and in point size 12.
-        Two line spaces precede the abstract.
-        The abstract
-        must be limited to one paragraph.
+        We proposed a novel paradigm for implementing latent reasoning by combining DAPO-like reinforcement learning and special gating units.
+        In this way, we transformed text-based explicit reasoning models to latent reasoning models, progressively and practically.
+        Initial experiments demonstrate its feasibility, with significant stability and the least extra training overhead by parallelism and minimal changes, while holding full potential to scale up.
     \end{abstract}
 
     \section{Introduction}\label{sec:intro}
 
-    The Chain of Continuous Thought (\textsc{Coconut})~\citep{hao2024traininglargelanguagemodels} explores the potential of the latent layer of reasoning as an alternate to traditional explicit CoT~\citep{DBLP:journals/corr/abs-2201-11903} in both reasoning procedure or answering procedure.
-    Its prior work has shown that the latent layer of continuous reasoning can reduce unnecessary statements and focus on the core of the problem.
+    The Chain of Continuous Thought (\textsc{Coconut})~\citep{hao2024traininglargelanguagemodels} explores the potential of the latent layer of reasoning as an alternative to the traditional explicit CoT~\citep{DBLP:journals/corr/abs-2201-11903} in both the reasoning procedure and the response procedure.
+    Its previous work has shown that the latent layer of continuous reasoning can reduce unnecessary statements and focus on the core of the problem.
 
-    These models are issued from general-purpose language, supervised to train from steps of a reasoning procedure, and progressively increase their layers of latent reasoning.
-    It's impractical due to the lack of customized reasoning data, and progressive training is significantly less convenient than explicit CoT\@.
-    Hence, we provide a new approach to implementing this latent reasoning layer---fine-tuning from explicit reasoning models.
+    These models are issued from general-purpose language, trained in supervised steps of a reasoning procedure, and progressively increase their layers of latent reasoning.
+    It is impractical due to the lack of customized reasoning data, and progressive training is significantly less convenient than explicit CoT\@.
+    Hence, we provide a new approach to implementing this latent reasoning layer, fine-tuning from explicit reasoning models.
 
     In 2014~\citep{DBLP:journals/corr/ChungGCB14}, Chung et al.~proposed the Gated Recurrent Unit.
-    It is first leveraged to improve the RNNs, but we found that it is also feasible to use it in the latent reasoning chain to maintain its long-term contextual awareness.
+    It is first leveraged to improve the RNNs, but we found that using it in the latent reasoning chain is also feasible to maintain its long-term contextual awareness.
 
-    In January, the DeepSeek team proposed a distillation-based method for implementing a reasoning model via reinforcement learning~\citep{deepseekai2025deepseekr1incentivizingreasoningcapability}, and they applied the approach to the Qwen-2.5B~\citep{qwen2.5} to a reasoning model.
-    Given the limitations of a 2.5B parameter model in reasoning tasks, we aim to implement the \textsc{Coconut} on the small model and find its potential in reasoning compared to the original explicit reasoning model.
+    In January, the DeepSeek team proposed a distillation-based method to implement a reasoning model through reinforcement learning~\citep{deepseekai2025deepseekr1incentivizingreasoningcapability}, and applied the approach to Qwen-2.5B~\citep{qwen2.5} to a reasoning model.
+    Given the limitations of a 2.5B parameter model in reasoning tasks, we aim to implement \textsc{Coconut} on the small model and find its potential in reasoning compared to the original explicit reasoning model.
 
     \section{Methodology}\label{sec:methodology}
 
@@ -100,8 +94,8 @@
 
     \subsubsection{Language Model}
 
-    We use the proposed architecture proposed in \textsc{Coconut}~\citep{hao2024traininglargelanguagemodels}.
-    It enables two modes for LLMs---latent mode and transparent mode.
+    We use the architecture proposed in \textsc{Coconut}~\citep{hao2024traininglargelanguagemodels}.
+    It enables two modes for LLMs: latent mode and transparent mode.
 
     \paragraph{Latent Mode}
     The latent mode reduces the extra computation of decoding reasoning text.
@@ -109,12 +103,12 @@
     This mode also exclusively owns the gated unit, which will be explained later.
 
     \paragraph{Transparent Mode}
-    This is the normal mode of what LLMs do.
-    They speak human language and eventually output answers during our research progress.
+    This is the normal mode of LLMs.
+    They speak the human language and eventually provide answers during our research progress.
 
     \subsubsection{Gated Unit}
 
-    The gated unit is the innovative point of our paper.
+    The gated unit is the innovation point of our paper.
 
     Unlike standard causal models that treat each decoding step as conditionally independent beyond the token history, we introduce a GRU-style gating mechanism in the latent reasoning stage.
     This gate learns to control information flow and retention, enabling the model to persist and refine internal reasoning states across steps.
@@ -129,7 +123,7 @@
     The key to letting the model learn is to sample and filter satisfying results.
 
     The whole sampling procedure is shown in figure~\ref{eq:rl-loss}.
-    We will provide our hyperparameters in the appendix.
+    We will provide our hyperparameters in the Appendix.
 
     \begin{figure}[hhhh]
         \centering
@@ -142,7 +136,7 @@
 
     DeepSeek's method unintentionally increased the reasoning procedure to an abnormal length.
 
-    Since it is batched, the final formula is given on~\ref{eq:award-machanism}, where $r_i$, $c_i$, and $l_i$ denote the award, correctness award, and length award, respectively.
+    Since it is batch, the final formula is given in~\ref{eq:award-machanism}, where $r_i$, $c_i$, and $l_i$ denote the award, correctness award, and length award, respectively.
 
     \begin{equation}
         r_i = \dfrac{c_i - \bar{c}}{\sqrt{\sum\left(c_i - \bar{c}\right)^2} + 10^{-6}} + \dfrac{l_i - \bar{l}}{\left\lvert\mathrm{max}\left\{l_i - \bar{l}\right\}\right\rvert + 10^{-6}}
