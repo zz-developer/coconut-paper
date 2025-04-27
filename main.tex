@@ -2,7 +2,7 @@
 \usepackage{times,iclr2025_conference}
 
 % Optional math commands from https://github.com/goodfeli/dlbook_notation.
-\input{math_commands.tex}
+\input{math_commands}
 
 \usepackage{hyperref}
 \usepackage{url}
@@ -51,6 +51,7 @@
         Initial experiments demonstrate its feasibility, with significant stability and the least extra training overhead by parallelism and minimal changes, while holding full potential to scale up.
     \end{abstract}
 
+
     \section{Introduction}\label{sec:intro}
 
     The Chain of Continuous Thought (\textsc{Coconut})~\citep{hao2024traininglargelanguagemodels} explores the potential of the latent layer of reasoning as an alternative to the traditional explicit CoT~\citep{DBLP:journals/corr/abs-2201-11903} in both the reasoning procedure and the response procedure.
@@ -66,89 +67,132 @@
     In January, the DeepSeek team proposed a distillation-based method to implement a reasoning model through reinforcement learning~\citep{deepseekai2025deepseekr1incentivizingreasoningcapability}, and applied the approach to Qwen-2.5B~\citep{qwen2.5} to a reasoning model.
     Given the limitations of a 2.5B parameter model in reasoning tasks, we aim to implement \textsc{Coconut} on the small model and find its potential in reasoning compared to the original explicit reasoning model.
 
-    \section{Related Work}\label{sec:related-work}
+
+    \section{Background}\label{sec:background}
+
+    \paragraph{Explicit Reasoning Models}
+
+    Advances in explicit reasoning models, including OpenAI o1 \& o3~\citep{openai2025o3o4mini, openai2024o1} and DeepSeek R1~\citep{deepseekai2025deepseekr1incentivizingreasoningcapability}, demonstrates its strong ability on mathematical reasoning.
+    Based on Chain-of-Thought (CoT,~\citealp{DBLP:journals/corr/abs-2201-11903}), models can answer demanding questions after solving it internally with explicit procedures.
+
+    However, explicit reasoning my have difficulty in concisity and efficiency---explicit reasoning text is often verbose and inefficient.
+
+    \paragraph{Chain of Continuous Thought}
+
+    \citeauthor{hao2024traininglargelanguagemodels} proposed \textsc{Coconut} (\citeyear{hao2024traininglargelanguagemodels}), assigning models to ``reason in a latent continuous thought.''
+
+    Compared to explicit reasoning, \textsc{Coconut} leverages latent spaces, promoting its efficiency and accuracy.
+    However, it faces difficulty in scaling up, and requires step-by-step guidance in training.
+
+    \paragraph{Large-scale Reinforcement Learning}
+
+    Large-scale Reinforcement Learning (RL), including Proximal Policy Optimization (PPO,~\citealp{DBLP:journals/corr/SchulmanWDRK17}), Group Relative Policy Optimization (GRPO,~\citealp{shao2024deepseekmathpushinglimitsmathematical}), and Decoupled Clip and Dynamic Sampling Policy Optimization (DAPO,~\citealp{yu2025dapoopensourcellmreinforcement}).
+
+    We adapt the DAPO objective, which is formulated as:
+
+    \begin{equation}
+        \begin{aligned}
+            \mathcal{J}_{\mathrm{DAPO}}(\theta) =\quad& \mathbb{E}_{(q,a)\sim \mathcal{D}, \{o_i\}_{i=1}^G\sim \pi_{\theta_\mathrm{old}}(\cdot\mid q)}\\&
+            \left[\frac{1}{\sum_{i=1}^{G}|o_i|}\sum_{i=1}^{G}\sum_{t=1}^{|o_i|}
+            \min \left( r_{i,t}(\theta) \hat{A}_{i,t},
+                \ \mathrm{clip} \left( r_{i,t}(\theta), 1 - {\varepsilon_{\mathrm{low}}}, 1 + {\varepsilon_{\mathrm{high}}} \right) \hat{A}_{i,t} \right) \right]
+            \\
+            \mathrm{subject\ to}\quad& 0< \left|\{o_i\mid\texttt{is\_equivalent}(a,o_i)\}\right|< G,
+            \label{eq:dapoloss}
+        \end{aligned}
+    \end{equation}
+    where
+    \begin{equation}
+        r_{i,t}(\theta)=\frac{\pi_{\theta}(o_{i,t} \mid q, o_{i,<t})}{\pi_{\theta_{\mathrm{old}}}(o_{i,t} \mid q,o_{i,<t})},\quad\hat{A}_{i,t} = \frac{R_i - \mathrm{mean}(\{R_i\}_{i=1}^G)}{\mathrm{std}(\{R_i\}_{i=1}^G)}.
+        \label{eq:advantage_calculation}
+    \end{equation}
+
 
     \section{Methodology}\label{sec:methodology}
 
-    \subsection{Architecture}\label{subsec:architecture}
+    \subsection{Model Architecture}\label{subsec:architecture}
 
-    Training a language model from direct answering to latent reasoning is impractical without specialized guidance.
-    Instead, we propose a direct method, alternating the model architecture from the pure connection of latent reasoning layers to a GRU-based latent reasoning chain.
+    Modern LLMs involves Embedding, Transformer, and Output layers, as we denote them $\mathbf{E}$, $\mathbf{T}_n$, and $\mathbf{O}$ respectively, where $n$ indicates the layer of hidden state.
 
-    We deploy a reset gate and an update gate, not during the model architecture but in the reasoning process.
+    To avoid breaking special usage in final layers~\citep{elhage2021mathematical}, we used middle layers as the entry of the latent reasoning space.
 
-    \subsubsection{Language Model}
+    \subsection{Inference}\label{subsec:inference}
 
-    We use the architecture proposed in \textsc{Coconut}~\citep{hao2024traininglargelanguagemodels}.
-    It enables two modes for LLMs: latent mode and transparent mode.
+    The whole inference procedure is described in (\ldots)
 
-    \paragraph{Latent Mode}
-    The latent mode reduces the extra computation of decoding reasoning text.
-    Hao et al.~ demonstrate that human language is designed to communicate instead of relying heavily on reasoning, so we believe it's unnecessary for users always to decipher what AI reasons.
-    This mode also exclusively owns the gated unit, which will be explained later.
+    After extracting the hidden state $\mathbf{h}_{n,0}$ (where $n$ denotes the layer number and $k$ denotes time sequence, which is $0$ here), we pass the state to the Variational Autoencoder~\citep{DBLP:journals/corr/abs-1906-02691}, and produce a vector for storage with length $l_s$.
 
-    \paragraph{Transparent Mode}
-    This is the normal mode of LLMs.
-    They speak the human language and eventually provide answers during our research progress.
-
-    \subsubsection{Gated Unit}
-
-    The gated unit is the innovation point of our paper.
-
-    Unlike standard causal models that treat each decoding step as conditionally independent beyond the token history, we introduce a GRU-style gating mechanism in the latent reasoning stage.
-    This gate learns to control information flow and retention, enabling the model to persist and refine internal reasoning states across steps.
-    This effectively transforms reasoning from a fully recurrent process into a gated latent update, yielding better consistency and longer-term dependency tracking.
-
-    \subsection{Reinforcement Learning}\label{subsec:reinforcement}
-
-    Inspired by DAPO~\cite {yu2025dapoopensourcellmreinforcement}, we deployed a mechanism that applies standardization considered beyond accuracy.
-
-    \subsubsection{Sampling}
-
-    The key to letting the model learn is to sample and filter satisfying results.
-
-    The whole sampling procedure is shown in figure~\ref{eq:rl-loss}.
-    We will provide our hyperparameters in the Appendix.
-
-    \begin{figure}[hhhh]
-        \centering
-        \includegraphics[width=.8\textwidth]{./figures/sampling-procedure}
-        \caption{The sampling procedure. It happens with parallelized computation, but for the sake of simplicity, we use one as an example.}
-        \label{fig:sampling-procedure}
-    \end{figure}
-
-    \subsubsection{Award Mechanism}
-
-    DeepSeek's method unintentionally increased the reasoning procedure to an abnormal length.
-
-    Since it is batch, the final formula is given in~\ref{eq:award-machanism}, where $r_i$, $c_i$, and $l_i$ denote the award, correctness award, and length award, respectively.
+    Then, the new vector with the same shape of $\mathbf{h}_{n,k}$, as we denote $\mathbf{h}^\prime_{n,k}$, will be operated by several gates, as described in Equation~\ref{eq:gate}.
 
     \begin{equation}
-        r_i = \dfrac{c_i - \bar{c}}{\sqrt{\sum\left(c_i - \bar{c}\right)^2} + 10^{-6}} + \dfrac{l_i - \bar{l}}{\left\lvert\mathrm{max}\left\{l_i - \bar{l}\right\}\right\rvert + 10^{-6}}
-        \label{eq:award-machanism}
+        \mathbf{h}_{n,k} = \mathbf{h}_{n,k-1} \odot \mathbf{g}_k + \left(1-\mathbf{g}\right) \odot \mathbf{t}_k
+        \label{eq:gate}
     \end{equation}
 
-    By adding $10^{-6}$, we can avoid producing \texttt{NaN} if dividing zero.
-    Then, we apply these scores to the loss, given by~\ref{eq:rl-loss}.
-    We are also leveraging gradient accumulation during the training procedure.
+    \paragraph{Gates} There are three gates in our model, which are the general gate, the injection scalar, and the Dynamic Current Step Mixing Gate.
+
+    \begin{enumerate}
+        \item \textbf{General Gate.} The general gate is derived from sequence, its value dynamic.
+        We denote it as $\mathbf{g}_t$, and its procedure of derivation can be described in Equation (not yet).
+        \item \textbf{Injection Scalar.} The injection scalar is a constant value, which brought the result of gate-shaper to the gate, to bridge the difference in order of magnitude.
+        \item \textbf{Dynamic Current Step Mixing Gate.}
+    \end{enumerate}
+
+    \paragraph{Long-term Cache}
+
+    To enable long-term storage of reasoning features, we introduce a VAE-style bottleneck layer, compressing $1536$-dimensional features to $256$ dimensions and then expanding back to $1536$ before gating.
+
+    We store it in each operation, and concatenate these vectors into a matrix subsequently as hidden state.
+
+    \subsection{Training}\label{subsec:training}
+
+    We use the DAPO objective as our reinforcement learning framework, but the whole procedure is slightly different from the original DAPO.
+
+    \subsubsection{Reinforcement Learning}
+
+    The whole procedure of reinforcement learning can be described in Figure.
+
+    Firstly we apply rigorous datasets to the inference procedure, and verify the answer~\citep{Kydlicek_Math-Verify_Math_Verification}.
+
+    We parallelized several inference procedures simultaneously, preferably $16$ for a same question, and verify the answer.
+
+    \paragraph{Award Mechanism}
+
+    We use $\mathrm{award}_{\mathrm{acc}}$ and $\mathrm{penality}_{\mathrm{acc}}$ to award or penalize in accuracy.
+    After mixing the accuracy and length evaluation, we inject it to loss.
+
+    \paragraph{Positive-Negative Ratio}
+
+    We use a ratio to mix positive and negative cases, which is $1:1$.
+
+    \subsection{Time Consistency Regularization}\label{subsec:time-consistency-reg}
+
+    A significant reason for chaotic response of multi-layer \textsc{Coconut} is its time inconsistency, which lead to the model's failure to maintain a consistent reasoning process.
+
+    We adapt a mechanism called ``Gating Value Bonus,'' which is used to guarantee the gate to converge to a fixed position, as we denote in Equation~\ref{eq:gating-value-bonus}.
 
     \begin{equation}
-        \mathrm{loss} = \sum\mathrm{model\ loss} + \dfrac{\overline{r_i}}{\sum{\mathrm{text\ end\ indices} + 1}}
-        \label{eq:rl-loss}
+        \mathcal{J}_{\mathrm{gate}}=\min\left\{C_0\exp\left[\lambda\left(\dfrac{1}{2}-g_i\right)^2\right]\right\}
+        \label{eq:gating-value-bonus}
     \end{equation}
 
-    And to promote its diversity, we are also applying punishment for being identical.
+    \subsection{Parallelized Training}\label{subsec:parallelized-training}
 
-    \appendix
+    After sampling, we concatenate the question, answer, and hidden state, and apply it to training procedure.
 
     \section{Experiments}\label{sec:expr}
 
+
     \section{Discussion}\label{sec:discussion}
+
 
     \section{Conclusion}\label{sec:conclusion}
 
     \bibliographystyle{abbrvnat}  % or another appropriate style
     \bibliography{main}
+
+    \appendix
+
 
     \section{Appendix}\label{sec:appendix}
 \end{document}
