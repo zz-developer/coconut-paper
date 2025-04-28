@@ -9,13 +9,13 @@
 \usepackage{graphicx}
 
 
-\title{From Transparent to Opaque: Leveraging Gating Mechanism in Latent Reasoning Chain}
+\title{Should have a better title.}
 
 % Authors must not appear in the submitted version. They should be hidden
 % as long as the \iclrfinalcopy macro remains commented out below.
 % Non-anonymous submissions will be rejected without review.
 
-\iclrfinalcopy
+%\iclrfinalcopy
 
 \author{%
     Zheheng Zhang \\
@@ -73,20 +73,76 @@
     \paragraph{Explicit Reasoning Models}
 
     Advances in explicit reasoning models, including OpenAI o1 \& o3~\citep{openai2025o3o4mini, openai2024o1} and DeepSeek R1~\citep{deepseekai2025deepseekr1incentivizingreasoningcapability}, demonstrates its strong ability on mathematical reasoning.
-    Based on Chain-of-Thought (CoT,~\citealp{DBLP:journals/corr/abs-2201-11903}), models can answer demanding questions after solving it internally with explicit procedures.
+    Based on Chain-of-Thought ~\citep{DBLP:journals/corr/abs-2201-11903}, just through prompts, models achieved significant improvements on arithmetic, commonsense, and symbolic reasoning tasks with \textit{explicitly generate} intermediate reasoning text.
+    \citet{kojima2023largelanguagemodelszeroshot} discovered that even without few-shot examples, math reasoning capabilities can be still improved by a phrase like ``Let's think step by step.''
+    \citet{yao2023reactsynergizingreasoningacting} proposed \textsc{ReAct}, which combines reasoning and acting, and achieved state-of-the-art performance on several reasoning tasks.
 
-    However, explicit reasoning my have difficulty in concisity and efficiency---explicit reasoning text is often verbose and inefficient.
+    Several novel paradigms were also issued from explicit reasoning models~\citep{wang2023selfconsistencyimproveschainthought, yao2023treethoughtsdeliberateproblem, Besta_2024}.
+    In this way, explicit reasoning creates a new level on mathematical reasoning tasks.
 
     \paragraph{Chain of Continuous Thought}
 
-    \citeauthor{hao2024traininglargelanguagemodels} proposed \textsc{Coconut} (\citeyear{hao2024traininglargelanguagemodels}), assigning models to ``reason in a latent continuous thought.''
+    Previous works already found LLMs may involve hidden computation steps, which are not explicitly generated in text~\citep{yang2024largelanguagemodelslatently, chen2023theoremqatheoremdrivenquestionanswering}.
+    Driven by this spirit, \citet{hao2024traininglargelanguagemodels} proposed \textsc{Coconut}, assigning models to ``reason in a latent continuous space'' through specifically designed training objectives, and demonstrated its potential compared to explicit Chain-of-Thought reasoning procedure, especially on tasks requiring backtracking.
+    \citet{geiping2025scalingtesttimecomputelatent} introduced a new recurrent transformer architecture that lets models perform multiple hidden reasoning iterations per token.
+    In this way, recurrent block that can be looped arbitrarily at inference to refine the hidden state before producing the next token.
+    \citet{chen2025language} argued that LLMs may involve born ability to reason internally, suggesting LLMs can internally learn better reasoning policies in latent space when given appropriate training signals.
 
-    Compared to explicit reasoning, \textsc{Coconut} leverages latent spaces, promoting its efficiency and accuracy.
-    However, it faces difficulty in scaling up, and requires step-by-step guidance in training.
+    Compared to explicit reasoning, latent reasoning paradigms leverages latent spaces, promoting its efficiency and accuracy, but still face problems with scaling-up and stability.
 
     \paragraph{Large-scale Reinforcement Learning}
 
-    Large-scale Reinforcement Learning (RL), including Proximal Policy Optimization (PPO,~\citealp{DBLP:journals/corr/SchulmanWDRK17}), Group Relative Policy Optimization (GRPO,~\citealp{shao2024deepseekmathpushinglimitsmathematical}), and Decoupled Clip and Dynamic Sampling Policy Optimization (DAPO,~\citealp{yu2025dapoopensourcellmreinforcement}).
+    \citet{ouyang2022traininglanguagemodelsfollow} showed how GPT-3 can be fine-tuned with reinforcement learning via Proximal Policy Optimization (PPO) to make it possible to follow human instructions.
+    PPO~\citep{DBLP:journals/corr/SchulmanWDRK17} is a reinforcement learning algorithm that optimizes the policy of an agent by maximizing the expected reward while ensuring that the new policy does not deviate too much from the old policy.
+    \citet{rafailov2024directpreferenceoptimizationlanguage} proposed a new method called Direct Preference Optimization (DPO), which is a simple and efficient alternative to PPO for fine-tuning language models.
+    Anthropic explored scaling RLHF by leveraging AI models as human labelers.
+    In their Constitution AI~\citet{bai2022constitutionalaiharmlessnessai}, they used RLHF to train a model to significantly increase its safety and harmlessness via reinforcement learning.
+    \citet{shao2024deepseekmathpushinglimitsmathematical} proposed Group Relative Policy Optimization (GRPO), which is a new reinforcement learning algorithm that overcame the limitations of PPO, including the need for a large number of samples and the difficulty of tuning hyperparameters.
+    \citet{yu2025dapoopensourcellmreinforcement} demonstrated the effectiveness of Decoupled Clip and Dynamic Sampling Policy Optimization (DAPO) in large-scale reinforcement learning, which made state-of-the-art performance on several benchmarks for Qwen2.5-32B~\citet{qwen2.5}, which scored 50 in AIME 24.
+
+    \section{Methodology}\label{sec:methodology}
+
+    \subsection{Model Architecture}\label{subsec:architecture}
+
+    Modern LLMs involves Embedding, Transformer, and Output layers, as we denote them $\boldsymbol{E}$, $\boldsymbol{T}_n$, and $\boldsymbol{O}$ respectively, where $n$ indicates the layer of hidden state.
+
+    To avoid breaking special usage in final layers~\citep{elhage2021mathematical}, we used middle layers as the entry of the latent reasoning space.
+
+    \subsection{Inference}\label{subsec:inference}
+
+    The whole inference procedure is described in (\ldots)
+
+    After extracting the hidden state $\boldsymbol{h}_{n,0}$ (where $n$ denotes the layer number and $k$ denotes time sequence, which is $0$ here), we pass the state to the Variational Autoencoder~\citep{DBLP:journals/corr/abs-1906-02691}, and produce a vector for storage with length $l_s$.
+
+    Then, the new vector with the same shape of $\boldsymbol{h}_{n,k}$, as we denote $\boldsymbol{h}^\prime_{n,k}$, will be operated by several gates, as described in Equation~\ref{eq:gate}.
+
+    \begin{equation}
+        \boldsymbol{h}_{n,k} = \boldsymbol{h}_{n,k-1} \odot \boldsymbol{g}_k + \left(1-\boldsymbol{g}\right) \odot \boldsymbol{t}_k
+        \label{eq:gate}
+    \end{equation}
+
+    \paragraph{Gates} There are three gates in our model, which are the general gate, the injection scalar, and the Dynamic Current Step Mixing Gate.
+
+    \begin{enumerate}
+        \item \textbf{General Gate.} The general gate is derived from sequence, its value dynamic.
+        We denote it as $\boldsymbol{g}_t$, and its procedure of derivation can be described in Equation (not yet).
+        \item \textbf{Injection Scalar.} The injection scalar is a constant value, which brought the result of gate-shaper to the gate, to bridge the difference in order of magnitude.
+        \item \textbf{Dynamic Current Step Mixing Gate.}
+    \end{enumerate}
+
+    \paragraph{Long-term Cache}
+
+    To enable long-term storage of reasoning features, we introduce a VAE-style bottleneck layer, compressing $1536$-dimensional features to $256$ dimensions and then expanding back to $1536$ before gating.
+
+    We store it in each operation, and concatenate these vectors into a matrix subsequently as hidden state.
+
+    \subsection{Training}\label{subsec:training}
+
+    We use the DAPO objective as our reinforcement learning framework, but the whole procedure is slightly different from the original DAPO.
+
+    \subsubsection{Reinforcement Learning}
+
+    The whole procedure of reinforcement learning can be described in Figure.
 
     We adapt the DAPO objective, which is formulated as:
 
@@ -106,51 +162,6 @@
         r_{i,t}(\theta)=\frac{\pi_{\theta}(o_{i,t} \mid q, o_{i,<t})}{\pi_{\theta_{\mathrm{old}}}(o_{i,t} \mid q,o_{i,<t})},\quad\hat{A}_{i,t} = \frac{R_i - \mathrm{mean}(\{R_i\}_{i=1}^G)}{\mathrm{std}(\{R_i\}_{i=1}^G)}.
         \label{eq:advantage_calculation}
     \end{equation}
-
-
-    \section{Methodology}\label{sec:methodology}
-
-    \subsection{Model Architecture}\label{subsec:architecture}
-
-    Modern LLMs involves Embedding, Transformer, and Output layers, as we denote them $\mathbf{E}$, $\mathbf{T}_n$, and $\mathbf{O}$ respectively, where $n$ indicates the layer of hidden state.
-
-    To avoid breaking special usage in final layers~\citep{elhage2021mathematical}, we used middle layers as the entry of the latent reasoning space.
-
-    \subsection{Inference}\label{subsec:inference}
-
-    The whole inference procedure is described in (\ldots)
-
-    After extracting the hidden state $\mathbf{h}_{n,0}$ (where $n$ denotes the layer number and $k$ denotes time sequence, which is $0$ here), we pass the state to the Variational Autoencoder~\citep{DBLP:journals/corr/abs-1906-02691}, and produce a vector for storage with length $l_s$.
-
-    Then, the new vector with the same shape of $\mathbf{h}_{n,k}$, as we denote $\mathbf{h}^\prime_{n,k}$, will be operated by several gates, as described in Equation~\ref{eq:gate}.
-
-    \begin{equation}
-        \mathbf{h}_{n,k} = \mathbf{h}_{n,k-1} \odot \mathbf{g}_k + \left(1-\mathbf{g}\right) \odot \mathbf{t}_k
-        \label{eq:gate}
-    \end{equation}
-
-    \paragraph{Gates} There are three gates in our model, which are the general gate, the injection scalar, and the Dynamic Current Step Mixing Gate.
-
-    \begin{enumerate}
-        \item \textbf{General Gate.} The general gate is derived from sequence, its value dynamic.
-        We denote it as $\mathbf{g}_t$, and its procedure of derivation can be described in Equation (not yet).
-        \item \textbf{Injection Scalar.} The injection scalar is a constant value, which brought the result of gate-shaper to the gate, to bridge the difference in order of magnitude.
-        \item \textbf{Dynamic Current Step Mixing Gate.}
-    \end{enumerate}
-
-    \paragraph{Long-term Cache}
-
-    To enable long-term storage of reasoning features, we introduce a VAE-style bottleneck layer, compressing $1536$-dimensional features to $256$ dimensions and then expanding back to $1536$ before gating.
-
-    We store it in each operation, and concatenate these vectors into a matrix subsequently as hidden state.
-
-    \subsection{Training}\label{subsec:training}
-
-    We use the DAPO objective as our reinforcement learning framework, but the whole procedure is slightly different from the original DAPO.
-
-    \subsubsection{Reinforcement Learning}
-
-    The whole procedure of reinforcement learning can be described in Figure.
 
     Firstly we apply rigorous datasets to the inference procedure, and verify the answer~\citep{Kydlicek_Math-Verify_Math_Verification}.
 
