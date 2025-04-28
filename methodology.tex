@@ -1,36 +1,44 @@
 \subsection{Model Architecture}\label{subsec:architecture}
 
-Modern LLMs involves Embedding, Transformer, and Output layers, as we denote them $\boldsymbol{E}$, $\boldsymbol{T}_n$, and $\boldsymbol{O}$ respectively, where $n$ indicates the layer of hidden state.
+We first introduce the general structure of modern large language models (LLMs) to better demonstrate our approach and paradigm.
 
-To avoid breaking special usage in final layers~\citep{elhage2021mathematical}, we used middle layers as the entry of the latent reasoning space.
+Modern LLMs involve Embedding, Transformer, and Output layers, as we denote them $\boldsymbol{E}$, $\boldsymbol{M}_n$, and $\boldsymbol{O}$ respectively, where $n$ indicates the layer of hidden state~\citep{DBLP:journals/corr/VaswaniSPUJGKP17, radford2019language}.
 
 \subsection{Inference}\label{subsec:inference}
 
+We used middle layers to enter the latent reasoning space to avoid breaking special usage in final layers~\citep{elhage2021mathematical}.
+
 The whole inference procedure is described in (\ldots)
 
-After extracting the hidden state $\boldsymbol{h}_{n,0}$ (where $n$ denotes the layer number and $k$ denotes time sequence, which is $0$ here), we pass the state to the Variational Autoencoder~\citep{DBLP:journals/corr/abs-1906-02691}, and produce a vector for storage with length $l_s$.
+We first perform prefilling by the question with the length $q_0$ into the model, and get the prefilled KV Cache~\citep{pope2022efficientlyscalingtransformerinference} and the probability distribution of the answer's first token $t_{q_0+1}$ (starting to count from $t_1$).
 
-Then, the new vector with the same shape of $\boldsymbol{h}_{n,k}$, as we denote $\boldsymbol{h}^\prime_{n,k}$, will be operated by several gates, as described in Equation~\ref{eq:gate}.
+After extracting the hidden state $\boldsymbol{h}_{n_0,q_0}$ (where $n_0$ denotes the layer number of the Transformer and $q_0$ denotes question length), we pass the state to a Variational Autoencoder~\citep{DBLP:journals/corr/abs-1906-02691}, and produce a vector for storage with length $l_s$.
+
+Then, the new vector with the exact shape of $\boldsymbol{h}_{n,k}$, as we denote $\boldsymbol{h}^\prime_{n,k}$, will be operated by several gates, as described in Equation~\ref{eq:gate}.
 
 \begin{equation}
-    \boldsymbol{h}_{n,k} = \boldsymbol{h}_{n,k-1} \odot \boldsymbol{g}_k + \left(1-\boldsymbol{g}\right) \odot \boldsymbol{t}_k
+    \boldsymbol{h}_{n,k} = \boldsymbol{h}_{n,k-1} \odot \boldsymbol{g} \odot \mathrm{DMG}(\boldsymbol{e}_k) \times
+    s_\mathrm{inj}
+    + \left(1-\boldsymbol{g}\right) \odot \boldsymbol{e}_k
     \label{eq:gate}
 \end{equation}
 
-\paragraph{Gates} There are three gates in our model, which are the general gate, the injection scalar, and the Dynamic Current Step Mixing Gate.
+where $\boldsymbol{e}_k=\mathrm{Embedding}(\boldsymbol{t}_k)$, where $\boldsymbol{t}_k$ denotes the token of sequence with position $k$, and $s_\mathrm{inj}$ denotes injection scalar, which is a constant scalar to bridge the difference in order of magnitude among gating value and the result of DMG (Dynamic Current-Step-Mixing Gate).
+
+\paragraph{Gates} Our model has two gates: the general gate, the injection scalar, and the Dynamic Current Step Mixing Gate.
 
 \begin{enumerate}
-    \item \textbf{General Gate.} The general gate is derived from sequence, its value dynamic.
-    We denote it as $\boldsymbol{g}_t$, and its procedure of derivation can be described in Equation (not yet).
-    \item \textbf{Injection Scalar.} The injection scalar is a constant value, which brought the result of gate-shaper to the gate, to bridge the difference in order of magnitude.
-    \item \textbf{Dynamic Current Step Mixing Gate.}
+    \item \textbf{General Gate.} The general gate is derived from the sequence, its value is dynamic.
+    We denote it as $\boldsymbol{g}_t$, and its derivation procedure can be described in Equation (not yet).
+    We initialize it to all zeros, i.e., initially the model is equivalent to the original one, and it evolves as $\boldsymbol{g}$ moves away from $\boldsymbol{0}$.
+    \item \textbf{Dynamic Current-Step-Mixing Gate (DMG).}
 \end{enumerate}
 
 \paragraph{Long-term Cache}
 
 To enable long-term storage of reasoning features, we introduce a VAE-style bottleneck layer, compressing $1536$-dimensional features to $256$ dimensions and then expanding back to $1536$ before gating.
 
-We store it in each operation, and concatenate these vectors into a matrix subsequently as hidden state.
+We store it in each operation, and concatenate these vectors into a matrix subsequently as a hidden state.
 
 \subsection{Training}\label{subsec:training}
 
