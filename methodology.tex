@@ -2,7 +2,7 @@
 
 We first introduce the general structure of modern large language models (LLMs) to better demonstrate our approach and paradigm.
 
-Modern LLMs involve Embedding, Transformer, and Output layers, as we denote them $\boldsymbol{E}$, $\boldsymbol{M}_n$, and $\boldsymbol{O}$ respectively, where $n$ indicates the layer of hidden state~\citep{DBLP:journals/corr/VaswaniSPUJGKP17, radford2019language}.
+Modern LLMs involve the Embedding layer; Core Transformer, including Self-Attention and FFN; and the Output linear layer which project the latent state vector of $\mathrm{embed\_\dim}$ to probability distribution of $\mathrm{vocab\_size}$ layers, as we denote them $\boldsymbol{E}$, $\boldsymbol{M}_n$, and $\boldsymbol{O}$ respectively, where $n$ indicates the layer of hidden state~\citep{DBLP:journals/corr/VaswaniSPUJGKP17, radford2019language}.
 
 \subsection{Inference}\label{subsec:inference}
 
@@ -12,37 +12,73 @@ The whole inference procedure is described in (\ldots)
 
 We first perform prefilling by the question with the length $q_0$ into the model, and get the prefilled KV Cache~\citep{pope2022efficientlyscalingtransformerinference} and the probability distribution of the answer's first token $t_{q_0+1}$ (starting to count from $t_1$).
 
-After extracting the hidden state $\boldsymbol{h}_{n_0,q_0}$ (where $n_0$ denotes the layer number of the Transformer and $q_0$ denotes question length), we pass the state to a Variational Autoencoder~\citep{DBLP:journals/corr/abs-1906-02691}, and produce a vector for storage with length $l_s$.
+After extracting the hidden state $\boldsymbol{h}_{n_0,q_0}$ (where $n_0$ denotes the layer number of the Transformer and $q_0$ denotes question length), we pass the state to a Variational Autoencoder~\citep{DBLP:journals/corr/abs-1906-02691} (we will introduce it in~\ref{subsubsec:vae-layer}), and produce a vector for storage with length $l_s$.
 
-Then, the new vector with the exact shape of $\boldsymbol{h}_{n,k}$, as we denote $\boldsymbol{h}^\prime_{n,k}$, will be operated by several gates, as described in Equation~\ref{eq:gate}.
+\subsubsection{Variational Autoencoder Layer}\label{subsubsec:vae-layer}
 
-\begin{equation}
-    \boldsymbol{h}_{n,k} = \boldsymbol{h}_{n,k-1} \odot \boldsymbol{g} \odot \mathrm{DMG}(\boldsymbol{e}_k) \times
-    s_\mathrm{inj}
-    + \left(1-\boldsymbol{g}\right) \odot \boldsymbol{e}_k
-    \label{eq:gate}
-\end{equation}
+We use Variational Autoencoder (VAE)~\citep{DBLP:journals/corr/abs-1906-02691} to compress and uncompress the hidden state token $\boldsymbol{h}_{n,k}$, which is a $l_h$-dimensional vector, to a $l_c$-dimensional vector and then back to $l_h$.
 
-where $\boldsymbol{e}_k=\mathrm{Embedding}(\boldsymbol{t}_k)$, where $\boldsymbol{t}_k$ denotes the token of sequence with position $k$, and $s_\mathrm{inj}$ denotes injection scalar, which is a constant scalar to bridge the difference in order of magnitude among gating value and the result of DMG (Dynamic Current-Step-Mixing Gate).
+\begin{figure}[btbp]
+    \centering
+    \includegraphics[width=0.5\textwidth]{./figures/VAE}
+    \caption{The VAE layer.
+    We firstly compress the hidden state to a lower dimension (expand into $4$ times of original size and then compress), extracting the compressed vector, and use the symmetric approach to expand it back to the original dimension.}
+    \label{fig:vae}
+\end{figure}
 
-\paragraph{Gates} Our model has two gates: the general gate, the injection scalar, and the Dynamic Current Step Mixing Gate.
+The VAE layer is a bottleneck-like layer, which is used to compress the hidden state to a lower dimension and then expand it back to the original dimension.
+The application of VAE in our work can be described in Figure~\ref{fig:vae}.
 
-\begin{enumerate}
-    \item \textbf{General Gate.} The general gate is derived from the sequence, its value is dynamic.
-    We denote it as $\boldsymbol{g}_t$, and its derivation procedure can be described in Equation (not yet).
-    We initialize it to all zeros, i.e., initially the model is equivalent to the original one, and it evolves as $\boldsymbol{g}$ moves away from $\boldsymbol{0}$.
-    \item \textbf{Dynamic Current-Step-Mixing Gate (DMG).}
-\end{enumerate}
+We pretrain the VAE on the online-generated activation of $1024$ consequences, and the validation loss decreased steadily, proving that the pretraining process of the VAE does not require much data.
+We will provide supplemental data demonstrating its effectiveness in the appendix.
 
 \paragraph{Long-term Cache}
+
+During sampling, we will store the latent space activation outputed from later $n_0$ for further paralleled training.
+Yet directly sotring the raw latent vector of $\mathrm{embed\_\dim}$ could be space consuming.
+(See \footnote{Consider a sample batch size of $1024$, sequence length $1024$, and embedding dimension $1536$. Each element occupies \qty{2}{bytes} (BF16), resulting in $1024\times1024\times1536\times2 = 2^{31.5}$ bytes, or approximately \qty{2.8}{GB} of VRAM.} for quantitative analysis of the space consumption).
 
 To enable long-term storage of reasoning features, we introduce a VAE-style bottleneck layer, compressing $1536$-dimensional features to $256$ dimensions and then expanding back to $1536$ before gating.
 
 We store it in each operation, and concatenate these vectors into a matrix subsequently as a hidden state.
 
+\subsubsection{Gating Mechanism}\label{subsubsec:gating-mechanism}
+
+Our model has two gates: the general gate, the injection scalar, and the Dynamic Current Step Mixing Gate.
+
+\begin{enumerate}
+    \item \textbf{General Gate.} The general gate is derived from the sequence; its value is dynamic.
+    We denote it as $\boldsymbol{g}_t$, and its derivation procedure can be described in Equation (not yet).
+    We initialize it to all zeros, i.e., initially the model is equivalent to the original one, and it evolves as $\boldsymbol{g}$ moves away from $\boldsymbol{0}$.
+    \item \textbf{Dynamic Current-Step-Mixing Gate (DMG).}
+\end{enumerate}
+
+The processed vector $\boldsymbol{h}^\prime_{n,k}$ after the VAE layer is passed to several gates, as we denote in Equation~\ref{eq:gate}.
+
+\begin{equation}
+    \boldsymbol{h}^\prime_{n,k} = \boldsymbol{h}^\prime_{n,k-1} \odot \boldsymbol{g} \odot \mathrm{DMG}(\boldsymbol{e}_k) \times
+    s_\mathrm{inj}
+    + \left(1-\boldsymbol{g}\right) \odot \boldsymbol{e}_k
+    \label{eq:gate}
+\end{equation}
+
+where $\boldsymbol{e}_k=\mathrm{Embedding}(\boldsymbol{t}_k)$; $\boldsymbol{t}_k$ denotes the token of sequence with position $k$, and $s_\mathrm{inj}$ denotes injection scalar, which is a constant scalar to bridge the difference in order of magnitude among gating value and the result of Dynamic Current-Step-Mixing Gate, which will be described in Section~\ref{subsubsec:gating-mechanism}.
+
 \subsection{Training}\label{subsec:training}
 
 We use the DAPO objective as our reinforcement learning framework, but the whole procedure is slightly different from the original DAPO.
+The whole training procedure is described in Algorithm~\ref{alg:training}.
+
+\begin{algorithm}
+    \caption{Training Procedure taking one batch as an example.\label{alg:training}}
+    \KwData{Given a sequence $S$ of $\mathrm{seq\_length}$, where $\boldsymbol{t}_k\in S$; $\boldsymbol{t}_k$ denotes token index.}
+    \KwResult{Model}
+    $\boldsymbol{e} \leftarrow \mathrm{Embedding}(\boldsymbol{s}\mathtt{[\colon-1]})$\;
+    $\boldsymbol{h} \leftarrow \boldsymbol{E}(\boldsymbol{e})$\;
+    $p \leftarrow \mathrm{Softmax}(\boldsymbol{O}(h))$\;
+    $loss \leftarrow \mathrm{CrossEntropyLoss}(p, \mathrm{one\_hot}(\mathtt{[\colon-1]}))$\;
+    Optimize by minimizing $loss$\;
+\end{algorithm}
 
 \subsubsection{Reinforcement Learning}
 
@@ -53,9 +89,7 @@ We adapt the DAPO objective, which is formulated as:
 \begin{equation}
     \begin{aligned}
         \mathcal{J}_{\mathrm{DAPO}}(\theta) =\quad& \mathbb{E}_{(q,a)\sim \mathcal{D}, \{o_i\}_{i=1}^G\sim \pi_{\theta_\mathrm{old}}(\cdot\mid q)}\\&
-        \left[\frac{1}{\sum_{i=1}^{G}|o_i|}\sum_{i=1}^{G}\sum_{t=1}^{|o_i|}
-        \min \left( r_{i,t}(\theta) \hat{A}_{i,t},
-            \ \mathrm{clip} \left( r_{i,t}(\theta), 1 - {\varepsilon_{\mathrm{low}}}, 1 + {\varepsilon_{\mathrm{high}}} \right) \hat{A}_{i,t} \right) \right]
+        \frac{1}{\sum_{i=1}^{G}|o_i|}\sum_{i=1}^{G}\sum_{t=1}^{|o_i|} r_{i,t}(\theta) \hat{A}_{i,t}
         \\
         \mathrm{subject\ to}\quad& 0< \left|\{o_i\mid\texttt{is\_equivalent}(a,o_i)\}\right|< G,
         \label{eq:dapoloss}
@@ -73,24 +107,26 @@ We parallelized several inference procedures simultaneously, preferably $16$ for
 
 \paragraph{Award Mechanism}
 
-We use $\mathrm{award}_{\mathrm{acc}}$ and $\mathrm{penality}_{\mathrm{acc}}$ to award or penalize in accuracy.
-After mixing the accuracy and length evaluation, we inject it to loss.
+We use $\mathrm{reward}_{\mathrm{acc}}$ and $\mathrm{penalty}_{\mathrm{len}}$ to award or penalize in accuracy, according to DAPO~\citep{yu2025dapoopensourcellmreinforcement}.
+The exact value of the reward and penalty will be described in appendices.
 
-\paragraph{Positive-Negative Ratio}
+\paragraph{Positive-Negative Clipping}
 
-We use a ratio to mix positive and negative cases, which is $1:1$.
+To eliminate the problem of too much negative samples (which each holds less use to the model's improvement) under a budget-tight scenario, we only choose all the positive samples, and randomly choose the rest negative samples according to the ratio $1:1$.
 
-\subsection{Time Consistency Regularization}\label{subsec:time-consistency-reg}
+\subsubsection{Time Consistency Regularization}
 
-A significant reason for chaotic response of multi-layer \textsc{Coconut} is its time inconsistency, which lead to the model's failure to maintain a consistent reasoning process.
+We adapt a mechanism called ``Gating Value Bonus,'' which is used to guarantee the gate to converge to a fixed position to let the model make use of the information from latent space instead of setting stuck in the local optima of not using the space sufficiently.
 
-We adapt a mechanism called ``Gating Value Bonus,'' which is used to guarantee the gate to converge to a fixed position, as we denote in Equation~\ref{eq:gating-value-bonus}.
+The gating value bonus is a regularization term that encourages the gating values to be close to the middle, as the formulation is shown in Equation~\ref{eq:gating-value-bonus}.
 
 \begin{equation}
-    \mathcal{J}_{\mathrm{gate}}=\min\left\{C_0\exp\left[\lambda\left(\dfrac{1}{2}-g_i\right)^2\right]\right\}
+    \mathcal{J}_{\mathrm{gate}}\left(\boldsymbol{g}\right)=\dfrac{1}{\mathrm{output\_dim}}C_0\displaystyle\sum_{i=0}^{\mathrm{output\_dim}}\exp\left[\lambda\left(\dfrac{1}{2}-g_i\right)^2\right]
     \label{eq:gating-value-bonus}
 \end{equation}
 
-\subsection{Parallelized Training}\label{subsec:parallelized-training}
+where $g_i=\boldsymbol{g}\cdot\boldsymbol{e}^{(i)}$, i.e., the $i$-th element of the gate vector $\boldsymbol{g}$, and $C_0$ is a constant to control the scale of the bonus; $\lambda$ is a constant to control the rate of convergence.
+
+\subsubsection{Parallelized Training}\label{subsubsec:parallelized-training}
 
 After sampling, we concatenate the question, answer, and hidden state, and apply it to training procedure.
