@@ -12,7 +12,7 @@
 \usepackage[linesnumbered,ruled,vlined]{algorithm2e}
 
 
-\title{Gated Latent Reasoning Loop: A Novel Paradigm for Latent Reasoning}
+\title{Should Have a Better Title}
 
 % Authors must not appear in the submitted version. They should be hidden
 % as long as the \iclrfinalcopy macro remains commented out below.
@@ -57,19 +57,7 @@
 
     \section{Introduction}\label{sec:intro}
 
-    The Chain of Continuous Thought (\textsc{Coconut})~\citep{hao2024traininglargelanguagemodels} explores the potential of the latent layer of reasoning as an alternative to the traditional explicit CoT~\citep{DBLP:journals/corr/abs-2201-11903} in both the reasoning procedure and the response procedure.
-    Its previous work has shown that the latent layer of continuous reasoning can reduce unnecessary statements and focus on the core of the problem.
-
-    These models are issued from general-purpose language, trained in supervised steps of a reasoning procedure, and progressively increase their layers of latent reasoning.
-    It is impractical due to the lack of customized reasoning data, and progressive training is significantly less convenient than explicit CoT\@.
-    Hence, we provide a new approach to implementing this latent reasoning layer, fine-tuning from explicit reasoning models.
-
-    In 2014~\citep{DBLP:journals/corr/ChungGCB14}, Chung et al.~proposed the Gated Recurrent Unit.
-    It is first leveraged to improve the RNNs, but we found that using it in the latent reasoning chain is also feasible to maintain its long-term contextual awareness.
-
-    In January, the DeepSeek team proposed a distillation-based method to implement a reasoning model through reinforcement learning~\citep{deepseekai2025deepseekr1incentivizingreasoningcapability}, and applied the approach to Qwen-2.5B~\citep{qwen2.5} to a reasoning model.
-    Given the limitations of a 2.5B parameter model in reasoning tasks, we aim to implement \textsc{Coconut} on the small model and find its potential in reasoning compared to the original explicit reasoning model.
-
+    \textit{Waiting for rewrite.}
 
     \section{Related Work}\label{sec:related-work}
     \input{related-work}
@@ -81,7 +69,7 @@
     \input{experiments}
 
     \section{Discussion}\label{sec:discussion}
-
+    \input{discussions}
 
     \section{Conclusion}\label{sec:conclusion}
 

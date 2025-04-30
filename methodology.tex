@@ -1,18 +1,20 @@
-\subsection{Model Architecture}\label{subsec:architecture}
-
 We first introduce the general structure of modern large language models (LLMs) to better demonstrate our approach and paradigm.
 
 Modern LLMs involve the Embedding layer; Core Transformer, including Self-Attention and FFN; and the Output linear layer which project the latent state vector of $\mathrm{embed\_\dim}$ to probability distribution of $\mathrm{vocab\_size}$ layers, as we denote them $\boldsymbol{E}$, $\boldsymbol{M}_n$, and $\boldsymbol{O}$ respectively, where $n$ indicates the layer of hidden state~\citep{DBLP:journals/corr/VaswaniSPUJGKP17, radford2019language}.
 
+\subsection{Model Architecture}\label{subsec:architecture}
+
+\textit{Waiting for writing.}
+
 \subsection{Inference}\label{subsec:inference}
 
-We used middle layers to enter the latent reasoning space to avoid breaking special usage in final layers~\citep{elhage2021mathematical}.
+We used middle layers to enter the latent reasoning space to avoid breaking special usage in final layers~\citep{saunshi2025reasoninglatentthoughtspower}.
 
 The whole inference procedure is described in (\ldots)
 
-We first perform prefilling by the question with the length $q_0$ into the model, and get the prefilled KV Cache~\citep{pope2022efficientlyscalingtransformerinference} and the probability distribution of the answer's first token $t_{q_0+1}$ (starting to count from $t_1$).
+We preliminarily perform prefilling by the question with the length $q_0$ into the model, and get the prefilled KV Cache~\citep{pope2022efficientlyscalingtransformerinference} and the probability distribution of the answer's first token $t_{q_0+1}$ (starting to count from $t_1$).
 
-After extracting the hidden state $\boldsymbol{h}_{n_0,q_0}$ (where $n_0$ denotes the layer number of the Transformer and $q_0$ denotes question length), we pass the state to a Variational Autoencoder~\citep{DBLP:journals/corr/abs-1906-02691} (we will introduce it in~\ref{subsubsec:vae-layer}), and produce a vector for storage with length $l_s$.
+After extracting the hidden state $\boldsymbol{h}_{n_0,q_0}$ (where $n_0$ denotes the layer number of the Transformer and $q_0$ denotes question length), we deliver the state to a Variational Autoencoder~\citep{DBLP:journals/corr/abs-1906-02691} (we will introduce it in~\ref{subsubsec:vae-layer}), and produce a vector for storage with length $l_s$.
 
 \subsubsection{Variational Autoencoder Layer}\label{subsubsec:vae-layer}
 
@@ -26,30 +28,30 @@ We use Variational Autoencoder (VAE)~\citep{DBLP:journals/corr/abs-1906-02691} t
     \label{fig:vae}
 \end{figure}
 
-The VAE layer is a bottleneck-like layer, which is used to compress the hidden state to a lower dimension and then expand it back to the original dimension.
-The application of VAE in our work can be described in Figure~\ref{fig:vae}.
+The VAE layer looks like a bottleneck-like layer, which is used to compress the hidden state to a lower dimension and then expand it back to the original size.
+The shape of the VAE layer in our work can be described in Figure~\ref{fig:vae}.
 
 We pretrain the VAE on the online-generated activation of $1024$ consequences, and the validation loss decreased steadily, proving that the pretraining process of the VAE does not require much data.
 We will provide supplemental data demonstrating its effectiveness in the appendix.
 
 \paragraph{Long-term Cache}
 
-During sampling, we will store the latent space activation outputed from later $n_0$ for further paralleled training.
-Yet directly sotring the raw latent vector of $\mathrm{embed\_\dim}$ could be space consuming.
-(See \footnote{Consider a sample batch size of $1024$, sequence length $1024$, and embedding dimension $1536$. Each element occupies \qty{2}{bytes} (BF16), resulting in $1024\times1024\times1536\times2 = 2^{31.5}$ bytes, or approximately \qty{2.8}{GB} of VRAM.} for quantitative analysis of the space consumption).
-
-To enable long-term storage of reasoning features, we introduce a VAE-style bottleneck layer, compressing $1536$-dimensional features to $256$ dimensions and then expanding back to $1536$ before gating.
+During sampling, we will store the latent space activation output from later $n_0$ for further paralleled training.
+Yet directly storing the raw vector of $\mathrm{embed\_\dim}$ could be space consuming.
+(see \footnote{Consider a sample batch size of $1024$, sequence length $1024$, and embedding dimension $1536$. Each element occupies \qty{2}{bytes} (BF16), resulting in $1024\times1024\times1536\times2 = 2^{31.5}$ bytes, or approximately \qty{2.8}{GB} of VRAM.
+In contrast, if we adapt the VAE layer to compress the hidden state to $256$ dimensions, we only need $1024\times1024\times256\times2 = 2^{29}$ bytes, or approximately \qty{512}{MB} of VRAM.
+} for quantitative analysis of the space consumption),
 
 We store it in each operation, and concatenate these vectors into a matrix subsequently as a hidden state.
 
 \subsubsection{Gating Mechanism}\label{subsubsec:gating-mechanism}
 
-Our model has two gates: the general gate, the injection scalar, and the Dynamic Current Step Mixing Gate.
+Our model introduces two gates: the update gate and the Dynamic Current Step Mixing Gate.
 
 \begin{enumerate}
-    \item \textbf{General Gate.} The general gate is derived from the sequence; its value is dynamic.
+    \item \textbf{Update Gate.} Inspired by Gated Recurrent Unit (GRU)~\citep{zhang2023dive_gru, DBLP:journals/corr/ChungGCB14, DBLP:journals/corr/ChoMBB14}, the update gate is used to increase its contextual consistency in patent space, but the value of the gate is derived from the sequence.
     We denote it as $\boldsymbol{g}_t$, and its derivation procedure can be described in Equation (not yet).
-    We initialize it to all zeros, i.e., initially the model is equivalent to the original one, and it evolves as $\boldsymbol{g}$ moves away from $\boldsymbol{0}$.
+    We initialize it to all zeros, i.e., initially the model is equivalent to the original one, but it evolves as $\boldsymbol{g}$ moves away from $\boldsymbol{0}$.
     \item \textbf{Dynamic Current-Step-Mixing Gate (DMG).}
 \end{enumerate}
 
@@ -82,9 +84,12 @@ The whole training procedure is described in Algorithm~\ref{alg:training}.
 
 \subsubsection{Reinforcement Learning}
 
-The whole procedure of reinforcement learning can be described in Figure.
+We parallelized several inference procedures simultaneously, preferably $16$ for a same question, and verify the answer~\citep{Kydlicek_Math-Verify_Math_Verification}.
 
-We adapt the DAPO objective, which is formulated as:
+\paragraph{Training Objective}
+
+We adapt the DAPO~\citep{yu2025dapoopensourcellmreinforcement} objective, but we have not already implemented the clip mechanism, which is used to clip the reward and penalty to a certain range.
+Hence, we currently use the original DAPO objective, which is shown in Equation~\ref{eq:dapoloss}.
 
 \begin{equation}
     \begin{aligned}
@@ -101,10 +106,6 @@ where
     \label{eq:advantage_calculation}
 \end{equation}
 
-Firstly we apply rigorous datasets to the inference procedure, and verify the answer~\citep{Kydlicek_Math-Verify_Math_Verification}.
-
-We parallelized several inference procedures simultaneously, preferably $16$ for a same question, and verify the answer.
-
 \paragraph{Award Mechanism}
 
 We use $\mathrm{reward}_{\mathrm{acc}}$ and $\mathrm{penalty}_{\mathrm{len}}$ to award or penalize in accuracy, according to DAPO~\citep{yu2025dapoopensourcellmreinforcement}.
@@ -112,11 +113,11 @@ The exact value of the reward and penalty will be described in appendices.
 
 \paragraph{Positive-Negative Clipping}
 
-To eliminate the problem of too much negative samples (which each holds less use to the model's improvement) under a budget-tight scenario, we only choose all the positive samples, and randomly choose the rest negative samples according to the ratio $1:1$.
+To eliminate the issue of too much negative samples (which each holds less use to the model's improvement) under a budget-tight scenario, we only choose all the positive samples, and randomly choose the rest negative samples according to the ratio $1:1$.
 
 \subsubsection{Time Consistency Regularization}
 
-We adapt a mechanism called ``Gating Value Bonus,'' which is used to guarantee the gate to converge to a fixed position to let the model make use of the information from latent space instead of setting stuck in the local optima of not using the space sufficiently.
+We adapt a mechanism called ``Gating Value Bonus,'' which is used to let the model make full use of the information from latent space instead of setting stuck in the local optima of not using the space sufficiently.
 
 The gating value bonus is a regularization term that encourages the gating values to be close to the middle, as the formulation is shown in Equation~\ref{eq:gating-value-bonus}.
 
