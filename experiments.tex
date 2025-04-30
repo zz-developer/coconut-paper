@@ -1,14 +1,14 @@
 \subsection{Setup}\label{subsec:setup}
 
-\paragraph{Base Model} We use Qwen2.5-1.5B~\citep{qwen2.5} as our base model, which is a 1.5B parameter model with $24$ layers.
-DeepSeek distilled the model into a explicit reasoning model~\citep{deepseekai2025deepseekr1incentivizingreasoningcapability}, which is our comparison baseline.
+\paragraph{Base Model} We use Qwen3-4B~\citep{qwen2, qwen2.5, qwen3} as our base model, which is a 4B-parameter model with $24$ layers.
+DeepSeek distilled the model into an explicit reasoning model~\citep{deepseekai2025deepseekr1incentivizingreasoningcapability}, which is our comparison baseline.
 
 \paragraph{Baselines} We compare our model with the following baselines:
 
 \begin{itemize}
-    \item \textbf{Qwen2.5-1.5B}: The original Qwen2.5-1.5B model.
-    \item \textbf{DeepSeek-R1-distill-Qwen2.5-1.5B}: The explicit reasoning model distilled from Qwen2.5-1.5B by DeepSeek~\citep{deepseekai2025deepseekr1incentivizingreasoningcapability}.
+    \item \textbf{Qwen3-4B}: The original model.
+    \item Distillation method from~\citet{deepseekai2025deepseekr1incentivizingreasoningcapability} performed on Qwen3-4B.
     \item The original model with DAPO~\citep{yu2025dapoopensourcellmreinforcement} objective solely.
-    \item Our model with DAPO objective, gating mechanism, and VAE layer.
+    \item Our model with DAPO algorithm, gating mechanism, and VAE layer.
     \item The original model with VAPO~\citep{yue2025vapoefficientreliablereinforcement} objective solely.
 \end{itemize}
