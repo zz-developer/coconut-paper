@@ -22,13 +22,13 @@ We use Variational Autoencoder (VAE)~\citep{DBLP:journals/corr/abs-1906-02691} t
 
 \begin{figure}[btbp]
     \centering
-    \includegraphics[width=0.5\textwidth]{./figures/VAE}
+    \includegraphics[width=0.6\textwidth]{./figures/vae_structure}
     \caption{The VAE layer.
     We first compress the hidden state to a lower dimension (expand into $4$ times the original size and then compress), extracting the compressed vector, and use the symmetric approach to expand it back to the original dimension.}
     \label{fig:vae}
 \end{figure}
 
-The VAE layer looks like a bottleneck-like layer, which compresses the hidden state to a lower dimension and then expands it back to its original size.
+The VAE layer looks like a bottleneck, compressing the hidden state to a lower dimension and then expanding it back to its original size.
 The shape of the VAE layer in our work can be described in Figure~\ref{fig:vae}.
 
 We pre-trained the VAE on the online-generated activation of $1024$ consequences, and the validation loss decreased steadily, proving that the VAE's pre-training process requires little data.
