@@ -28,19 +28,19 @@ We use Variational Autoencoder (VAE)~\citep{DBLP:journals/corr/abs-1906-02691} t
     \label{fig:vae}
 \end{figure}
 
-The VAE layer looks like a bottleneck-like layer, which is used to compress the hidden state to a lower dimension and then expand it back to the original size.
+The VAE layer looks like a bottleneck-like layer, which compresses the hidden state to a lower dimension and then expands it back to its original size.
 The shape of the VAE layer in our work can be described in Figure~\ref{fig:vae}.
 
 We pre-trained the VAE on the online-generated activation of $1024$ consequences, and the validation loss decreased steadily, proving that the VAE's pre-training process requires little data.
-We will provide supplemental data demonstrating its effectiveness in the appendix.
+In the appendix, we will provide supplemental data demonstrating its effectiveness.
 
 \paragraph{Long-term Cache}
 
 We will store the latent space activation output from later $n_0$ for further parallel training.
 Yet directly storing the raw vector of $\mathrm{embed\_\dim}$ could be space-consuming.
-(see \footnote{Consider a sample batch size of $1024$, sequence length $1024$, and embedding dimension $1536$. Each element occupies \qty{2}{bytes} (BF16), resulting in $1024\times1024\times1536\times2 = 2^{31.5}$ bytes, or approximately \qty{2.8}{GB} of VRAM.
+(See \footnote{Consider a sample batch size of $1024$, sequence length $1024$, and embedding dimension $1536$. Each element occupies \qty{2}{bytes} (BF16), resulting in $1024\times1024\times1536\times2 = 2^{31.5}$ bytes, or approximately \qty{2.8}{GB} of VRAM.
 In contrast, if we adapt the VAE layer to compress the hidden state to $256$ dimensions, we only need $1024\times1024\times256\times2 = 2^{29}$ bytes, or approximately \qty{512}{MB} of VRAM.
-} for quantitative analysis of the space consumption),
+} for quantitative analysis of the space consumption, and we have provided data in~\ref{subsec:vae-layer-detailed-exprs}.)
 
 We store it in each operation and concatenate these vectors into a matrix subsequently as a hidden state.
 
@@ -54,6 +54,9 @@ Our model introduces the update gate and the Dynamic Current Step Mixing Gate.
     We initialize it to all zeros, i.e., initially the model is equivalent to the original one, but it evolves as $\boldsymbol{g}$ moves away from $\boldsymbol{0}$.
     \item \textbf{Dynamic Current-Step-Mixing Gate (DMG).} The injection ratio of the latent state vector needs to vary depending on the next token, yet directly applying one fixed gate for all cannot fit this need.
     Therefore, we add a DMG to gate the Update Gate according to both the latent state vector and the embedding of the next token.
+    We fill the DMG with full zero initializations, which is aimed at stabilizing the training process.
+    The DMG is composed of a linear layer and a sigmoid activation function.
+    The linear layer projects the concatenated vector of the hidden state vector and the embedding vector to a half-sized vector compared to the original size.
 \end{enumerate}
 
 The processed vector $\boldsymbol{h}^\prime_{n,k}$ after the VAE layer is passed to several gates, as we denote in Equation~\ref{eq:gate}.
@@ -121,7 +124,7 @@ We randomly choose the remaining negative samples according to the ratio $1:1$.
 
 \subsubsection{Time Consistency Regularization}
 
-We adopt a mechanism called ``Gating Value Bonus, '' which is used to let the model make full use of the information from the latent space instead of getting stuck in the local optima of not using the space sufficiently.
+We adopt a mechanism called the ``Gating Value Bonus,'' which allows the model to fully leverage the information from the latent space instead of getting stuck in the local optima of not using the space sufficiently.
 
 The gating value bonus is a regularization term designed to constrain gating values toward the midpoint, as the formulation is shown in Equation~\ref{eq:gating-value-bonus}.
 
