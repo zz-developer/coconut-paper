@@ -14,7 +14,7 @@ After extracting the hidden state $\boldsymbol{h}_{n_0,q_0}$ (where $n_0$ denote
 \subsubsection{Variational Autoencoder}\label{subsubsec:vae-layer}
 
 We use Variational Autoencoder (VAE)~\citep{DBLP:journals/corr/abs-1906-02691} to compress and uncompress the hidden state token $\boldsymbol{h}_{n,k}$, which is an $l_h$-dimensional vector, to an $l_c$-dimensional vector and then back to $l_h$.
-The VAE layer looks like a bottleneck, compressing the hidden state to a lower dimension and then expanding it back to its original size.
+The VAE layer compresses the hidden state to a lower dimension and then expands it back to its original size.
 The shape of the VAE layer in our work can be described in Figure~\ref{fig:vae}.
 
 \begin{figure}
@@ -43,7 +43,7 @@ We store it in each operation and concatenate these vectors into a matrix subseq
 Our model introduces the update gate and the Dynamic Current Step Mixing Gate.
 
 \begin{enumerate}
-    \item \textbf{Update Gate.} Inspired by Gated Recurrent Unit (GRU)~\citep{zhang2023dive_gru, DBLP:journals/corr/ChungGCB14, DBLP:journals/corr/ChoMBB14}, the update gate is used to increase its contextual consistency in patent space, but the value of the gate is derived from the sequence.
+    \item \textbf{Update Gate.} Inspired by Gated Recurrent Unit (GRU)~\citep{zhang2023dive_gru, DBLP:journals/corr/ChungGCB14, DBLP:journals/corr/ChoMBB14}, the update gate is used to increase its contextual consistency in latent space, but the value of the gate is derived from the sequence.
     We denote it as $\boldsymbol{g}_t$, and its derivation procedure can be described in Equation (not yet).
     We initialize it to all zeros, i.e., initially the model is equivalent to the original one, but it evolves as $\boldsymbol{g}$ moves away from $\boldsymbol{0}$.
     \item \textbf{Dynamic Current-Step-Mixing Gate (DMG).} The injection ratio of the latent state vector needs to vary depending on the next token, yet directly applying one fixed gate for all cannot fit this need.
