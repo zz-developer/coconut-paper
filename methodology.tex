@@ -1,26 +1,23 @@
 We first introduce the general structure of modern large language models (LLMs) to demonstrate our approach and paradigm better.
 
-Modern LLMs involve the Embedding layer; Core Transformer, including Self-Attention and FFN; and the Output linear layer which projects the latent state vector of $\mathrm{embed\_\dim}$ to probability distribution of $\mathrm{vocab\_size}$ layers, as we denote them $\boldsymbol{E}$, $\boldsymbol{M}_n$ and $\boldsymbol{O}$ respectively, which $n$ indicates the layer of hidden state~\citep{DBLP:journals/corr/VaswaniSPUJGKP17, radford2019language}.
+Modern LLMs involve a Embedding layer; a core Transformer, including Self-Attention and Feed-Forward Network (FFN); and the Output linear layer which projects the latent state vector of $\mathrm{embed\_\dim}$ to probability distribution of $\mathrm{vocab\_size}$ layers, as we denote them $\boldsymbol{E}$, $\boldsymbol{M}_n$ and $\boldsymbol{O}$ respectively, which $n$ indicates the layer of hidden state~\citep{DBLP:journals/corr/VaswaniSPUJGKP17, radford2019language}.
 
 \subsection{Model Architecture}\label{subsec:architecture}
 
-\textit{Waiting for writing.}
-
-\subsection{Inference}\label{subsec:inference}
-
-We used middle layers to enter the latent reasoning space to avoid breaking special usage in final layers~\citep{saunshi2025reasoninglatentthoughtspower}.
-
-The whole inference procedure is described in (\ldots)
+We used layers in the middle of the Transformer core to enter the latent reasoning space to avoid breaking special usage in final layers~\citep{saunshi2025reasoninglatentthoughtspower}.
+Specifically, the latent vector we chose to extract activates the $n_0$-th decoder layer within the $n$-layer decoder.
 
 We preliminarily perform prefilling by the question with the length $q_0$ into the model and get the prefilled KV Cache~\citep{pope2022efficientlyscalingtransformerinference} and the probability distribution of the answer's first token $t_{q_0+1}$ (starting to count from $t_1$).
 
-After extracting the hidden state $\boldsymbol{h}_{n_0,q_0}$ (where $n_0$ denotes the layer number of the Transformer and $q_0$ denotes question length), we deliver the state to a Variational Autoencoder~\citep{DBLP:journals/corr/abs-1906-02691} (we will introduce it in~\ref{subsubsec:vae-layer}), and produce a vector for storage with length $l_s$.
+After extracting the hidden state $\boldsymbol{h}_{n_0,q_0}$ (where $n_0$ denotes the layer number of the Transformer and $q_0$ denotes question length), we deliver the state to a Variational Autoencoder~\citep{DBLP:journals/corr/abs-1906-02691}, and produce a vector for storage with length dimension of $\mathrm{compressed\_\dim}$.
 
-\subsubsection{Variational Autoencoder Layer}\label{subsubsec:vae-layer}
+\subsubsection{Variational Autoencoder}\label{subsubsec:vae-layer}
 
 We use Variational Autoencoder (VAE)~\citep{DBLP:journals/corr/abs-1906-02691} to compress and uncompress the hidden state token $\boldsymbol{h}_{n,k}$, which is an $l_h$-dimensional vector, to an $l_c$-dimensional vector and then back to $l_h$.
+The VAE layer looks like a bottleneck, compressing the hidden state to a lower dimension and then expanding it back to its original size.
+The shape of the VAE layer in our work can be described in Figure~\ref{fig:vae}.
 
-\begin{figure}[btbp]
+\begin{figure}
     \centering
     \includegraphics[width=0.6\textwidth]{./figures/vae_structure}
     \caption{The VAE layer.
@@ -28,11 +25,8 @@ We use Variational Autoencoder (VAE)~\citep{DBLP:journals/corr/abs-1906-02691} t
     \label{fig:vae}
 \end{figure}
 
-The VAE layer looks like a bottleneck, compressing the hidden state to a lower dimension and then expanding it back to its original size.
-The shape of the VAE layer in our work can be described in Figure~\ref{fig:vae}.
-
 We pre-trained the VAE on the online-generated activation of $1024$ consequences, and the validation loss decreased steadily, proving that the VAE's pre-training process requires little data.
-In the appendix, we will provide supplemental data demonstrating its effectiveness.
+In the appendix, we provide supplemental data to demonstrate the effectiveness of this approach.
 
 \paragraph{Long-term Cache}
 
@@ -44,7 +38,7 @@ In contrast, if we adapt the VAE layer to compress the hidden state to $256$ dim
 
 We store it in each operation and concatenate these vectors into a matrix subsequently as a hidden state.
 
-\subsubsection{Gating Mechanism}\label{subsubsec:gating-mechanism}
+\subsubsection{Gates}\label{subsubsec:gating-mechanism}
 
 Our model introduces the update gate and the Dynamic Current Step Mixing Gate.
 
@@ -54,9 +48,9 @@ Our model introduces the update gate and the Dynamic Current Step Mixing Gate.
     We initialize it to all zeros, i.e., initially the model is equivalent to the original one, but it evolves as $\boldsymbol{g}$ moves away from $\boldsymbol{0}$.
     \item \textbf{Dynamic Current-Step-Mixing Gate (DMG).} The injection ratio of the latent state vector needs to vary depending on the next token, yet directly applying one fixed gate for all cannot fit this need.
     Therefore, we add a DMG to gate the Update Gate according to both the latent state vector and the embedding of the next token.
-    We fill the DMG with full zero initializations, which is aimed at stabilizing the training process.
+    We fill the DMG with full zero initializations, which aims to stabilize the training process.
     The DMG is composed of a linear layer and a sigmoid activation function.
-    The linear layer projects the concatenated vector of the hidden state vector and the embedding vector to a half-sized vector compared to the original size.
+    The linear layer projects the concatenated vector of the hidden state vector and the embedding vector to a vector half the size of the original.
 \end{enumerate}
 
 The processed vector $\boldsymbol{h}^\prime_{n,k}$ after the VAE layer is passed to several gates, as we denote in Equation~\ref{eq:gate}.
@@ -70,32 +64,104 @@ The processed vector $\boldsymbol{h}^\prime_{n,k}$ after the VAE layer is passed
 
 Where $\boldsymbol{e}_k=\mathrm{Embedding}(\boldsymbol{t}_k)$; $\boldsymbol{t}_k$ denotes the token of the sequence with position $k$, and $s_\mathrm{inj}$ denotes the injection scalar, which is a constant scalar to bridge the difference in order of magnitude between the gating value and the result of Dynamic Current-Step-Mixing Gate, which will be described in Section~\ref{subsubsec:gating-mechanism}.
 
+\subsection{Inference}\label{subsec:inference}
+
+\newcommand{\initializedzero}{\boldsymbol{0}}
+
+We describe the inference process incorporating latent state injection and VAE-based compression in Algorithm~\ref{alg:inference-procedure}.
+At each generation step, the model extracts the current hidden state, compresses it via a Variational Autoencoder (VAE), and stores the latent representation in a cache.
+The latest latent code is then decompressed and optionally refined through reasoning layers before being used to compute the logits for the next token.
+This process iteratively updates the attention context and position encoding, enabling latent-informed token generation conditioned on the evolving latent memory.
+
+\begin{algorithm}[htbp]
+    \caption{Inference with VAE and Latent Injection \label{alg:inference-procedure}}
+    \KwIn{Tokenized input $\boldsymbol{t}_{1:q_0}$, attention mask $\boldsymbol{m}$}
+    \KwOut{Sampled tokens $\boldsymbol{t}_{q_0+1:q}$, log-probabilities, latent cache}
+
+    Initialize position index $\boldsymbol{p}$ and KV Cache\;
+    \If{depth $> 0$}{Initialize deep cache stack}
+
+    Embed input and perform model forward to extract $\boldsymbol{h}_{n_0,q_0}$\;
+    Initialize latent cache $\boldsymbol{z} \leftarrow \initializedzero$ and output buffer $\boldsymbol{t} \leftarrow \initializedzero$\;
+
+    \For{$i \leftarrow 1$ \KwTo max\_length}{
+        Compress latest hidden $\boldsymbol{h}_{n_0,q_0+i-1}$ via VAE and append to $\boldsymbol{z}$\;
+        Uncompress $\boldsymbol{z}_{-1}$ via VAE to obtain $\tilde{\boldsymbol{h}}$\;
+
+        \If{depth $> 0$}{
+            Loop $\tilde{\boldsymbol{h}}$ through $d$ reasoning layers to get updated $\tilde{\boldsymbol{h}}$
+        }
+
+        Compute next-token logits $\boldsymbol{\ell} \leftarrow \mathrm{LMHead}(\tilde{\boldsymbol{h}})$\;
+        Sample token $\boldsymbol{t}_{q_0+i}$ from $\mathrm{TopK}(\mathrm{Softmax}(\boldsymbol{\ell} / T), k)$\;
+
+        Append $\boldsymbol{t}_{q_0+i}$ and log-prob to result\;
+        \If{eot token appears in all sequences}{break}
+
+        Update attention mask and position\;
+        Embed $\boldsymbol{t}_{q_0+i}$ and update hidden via model forward with latent injection
+    }
+    \Return{Sampled tokens, log-probs, latent cache}
+\end{algorithm}
+
 \subsection{Training}\label{subsec:training}
 
 It is hard for us to train models in a budget-tight scenario, so we adapted Low-Rank Adaptation (LoRA)~\citep{DBLP:journals/corr/abs-2106-09685} to our model.
-
-We use the DAPO algorithm as our reinforcement learning framework, but the whole procedure differs slightly from the original DAPO\@.
+We utilize the DAPO algorithm as our reinforcement learning framework; however, the entire procedure differs slightly from the original DAPO.
 The whole training procedure is described in Algorithm~\ref{alg:training}.
 
 \begin{algorithm}
-    \caption{Training Procedure taking one batch as an example.\label{alg:training}}
-    \KwData{Given a sequence $S$ of $\mathrm{seq\_length}$, where $\boldsymbol{t}_k\in S$; $\boldsymbol{t}_k$ denotes token index.}
-    \KwResult{Model}
-    $\boldsymbol{e} \leftarrow \mathrm{Embedding}(\boldsymbol{s}\mathtt{[\colon-1]})$\;
-    $\boldsymbol{h} \leftarrow \boldsymbol{E}(\boldsymbol{e})$\;
-    $p \leftarrow \mathrm{Softmax}(\boldsymbol{O}(h))$\;
-    $loss \leftarrow \mathrm{CrossEntropyLoss}(p, \mathrm{one\_hot}(\mathtt{[\colon-1]}))$\;
-    Optimize by minimizing $loss$\;
+    \caption{Training Procedure\label{alg:training}}
+    \KwIn{Training data $(x, y)$, sampling model, verifier, parameters}
+    \KwOut{Trained model}
+
+    \SetKwFunction{Sampler}{sampler}
+    \SetKwFunction{Verifier}{verifier}
+
+    Initialize $step \gets 0$\;
+    \While{$step \leq \texttt{total\_steps}$}{
+        \ForEach{$(problems, ans)$ in $\texttt{data\_train}$}{
+            Tokenize problems to $\texttt{input\_ids}$ and $\texttt{attn\_mask}$\;
+
+            Call \Sampler{} and update intermediate results, shown in Algorithm~\ref{alg:inference-procedure}\;
+
+            Compute $correctness\_rewards \gets \Verifier{}(\texttt{res}, ans)$\;
+            Compute $len\_rewards$ from $text\_end\_indices$\;
+            Compute $correctness\_rate$\;
+
+            \If{correct samples too few}{
+                Downsample incorrect results to balance\;
+            }
+
+            Normalize reward: clip too short/long sequences, compute total reward\;
+            Build final training sequence by concatenating $\texttt{input\_ids}$ and $\texttt{res}$\;
+
+            \For{$epoch \gets 1$ \KwTo \texttt{num\_epochs}}{
+                \For{$i \gets 0$ \KwTo $N$ step $\texttt{batch\_size}$}{
+                    Extract a batch of sequence and hidden cache\;
+                    Decode latent via VAE and optionally apply recursive looping\;
+                    Combine token and latent via $\mathrm{Gater}$ to produce training embedding\;
+                    Run model forward to get logits\;
+
+                    Compute $loss$ by mixing DAPO loss and gating value bonus\;
+
+                    Update latent cache randomly for a subset\;
+
+                    Backpropagate and optimize\;
+                }
+            }
+        }
+    }
+    \Return{trained model}
 \end{algorithm}
 
 \subsubsection{Reinforcement Learning}
-
-We parallelized several inference procedures simultaneously, preferably $16$ for the same question, and verified the answer~\citep{Kydlicek_Math-Verify_Math_Verification}.
 
 \paragraph{Training Objective}
 
 We adapt the DAPO~\citep{yu2025dapoopensourcellmreinforcement} algorithm, but we have not implemented the clip mechanism, which is used to clip the reward and penalty to a specific range.
 Hence, we currently use the original DAPO algorithm, which is shown in Equation~\ref{eq:dapoloss}.
+We parallelized several inference procedures simultaneously, preferably $16$ for the same question, and verified the answer~\citep{Kydlicek_Math-Verify_Math_Verification}.
 
 \begin{equation}
     \begin{aligned}
@@ -120,7 +186,7 @@ The exact value of the reward and penalty will be described in the appendices.
 \paragraph{Positive-Negative Clipping}
 
 We choose only all the positive samples to eliminate the issue of too many negative samples (each of which is less useful for improving the model) under a budget-tight scenario.
-We randomly choose the remaining negative samples according to the ratio $1:1$.
+We randomly select the remaining negative samples in a ratio of $1:1$.
 
 \subsubsection{Time Consistency Regularization}
 
@@ -134,7 +200,3 @@ The gating value bonus is a regularization term designed to constrain gating val
 \end{equation}
 
 Where $g_i=\boldsymbol{g}\cdot\boldsymbol{e}^{(i)}$, i.e., the $i$-th element of the gate vector $\boldsymbol{g}$, and $C_0$ is a constant to control the scale of the bonus; $\lambda$ is a constant to control the rate of convergence.
-
-\subsubsection{Parallelized Training}\label{subsubsec:parallelized-training}
-
-After sampling, we concatenate the question, answer, and hidden state and apply them to the training procedure.

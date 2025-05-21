@@ -1,13 +1,12 @@
 \paragraph{Explicit Reasoning Models and Large-scale Reinforcement Learning}
 
-Advances in explicit reasoning models, including OpenAI o1 \& o3~\citep{openai2025o3o4mini, openai2024o1} and DeepSeek R1~\citep{deepseekai2025deepseekr1incentivizingreasoningcapability}, demonstrated their strong ability in mathematical reasoning.
-Based on Chain-of-Thought ~\citep{DBLP:journals/corr/abs-2201-11903}, models significantly improved arithmetic, commonsense, and symbolic reasoning tasks with explicit intermediate reasoning text.
+Advances in \textit{explicit} reasoning models, including OpenAI o1 \& o3~\citep{openai2025o3o4mini, openai2024o1} and DeepSeek R1~\citep{deepseekai2025deepseekr1incentivizingreasoningcapability}, demonstrated their strong ability in mathematical reasoning.
+Their work mainly focused on scaling up test-time computation by generating long Chain of Thought (CoT)~~\citep{DBLP:journals/corr/abs-2201-11903} text sequences including symbolic inference and reflection.
 
-Many paradigms were also created from explicit reasoning models subsequently, including Tree-of-Thought~\citep{yao2023treethoughtsdeliberateproblem}, Graph-of-Thought~\citep{Besta_2024}, which are also proposed to improve the reasoning ability of LLMs.
-
-\citet{ouyang2022traininglanguagemodelsfollow} showed how GPT-3~\citep{kojima2023largelanguagemodelszeroshot} can be fine-tuned with reinforcement learning via Proximal Policy Optimization (PPO). PPO is a reinforcement learning algorithm proposed by~\citet{DBLP:journals/corr/SchulmanWDRK17}, which optimizes the agent's policy by maximizing the expected reward while ensuring the new policy does not deviate excessively from the old policy.
+Advances in these models can't leave out the strong power of large-scale reinforcement learning paradigm, which has been widely used in LLMs.
+\citet{ouyang2022traininglanguagemodelsfollow} showed how GPT-3~\citep{kojima2023largelanguagemodelszeroshot} can be fine-tuned with reinforcement learning via Proximal Policy Optimization (PPO)~\citet{DBLP:journals/corr/SchulmanWDRK17}, which optimizes the agent's policy by maximizing the expected reward while ensuring the new policy does not deviate excessively from the old policy.
 \citet{shao2024deepseekmathpushinglimitsmathematical} Proposed Group Relative Policy Optimization (GRPO), which overcame the limitations of PPO, including the need for a large number of samples and the difficulty of tuning hyperparameters.
-\citet{yu2025dapoopensourcellmreinforcement} Demonstrated the effectiveness of Decoupled Clip and Dynamic Sampling Policy Optimization (DAPO) in large-scale reinforcement learning, which performed best in several benchmarks on Qwen2.5-32B~\citet{qwen2.5} solely based on pure reinforcement learning and the base instruction model of Qwen.
+\citet{yu2025dapoopensourcellmreinforcement} Demonstrated the effectiveness of Decoupled Clip and Dynamic Sampling Policy Optimization (DAPO) in large-scale reinforcement learning, which performed best in several benchmarks on Qwen2.5-32B~\citet{qwen2.5} solely based on pure reinforcement learning and the base instruction model of Qwen2.5-32B~\citep{qwen2.5}.
 
 In contrast, our work leverages a latent space instead of explicit reasoning text, which reduces verbosity and improves efficiency.
 Based on large-scale reinforcement learning, we effectively transplant those explicit reasoning-based optimization and advances into the latent reasoning region.
@@ -18,12 +17,11 @@ Previous works have already found that LLMs may involve hidden computation steps
 Driven by this spirit, \citet{hao2024traininglargelanguagemodels}proposed \textsc{Coconut}, assigning models to ``reason in a latent continuous space'' through specifically designed training algorithms, and demonstrated its potential compared to the explicit Chain-of-Thought reasoning procedure, especially on tasks requiring backtracking.
 
 \citet{geiping2025scalingtesttimecomputelatent} Introduced a new recurrent transformer architecture that lets models perform multiple hidden reasoning iterations per token, as they suggested that ``a recurrent block can be looped arbitrarily at inference to refine the hidden state before producing the next token.''
-\citet{chen2025language} argued that LLMs may have an inherent potential to reason internally, suggesting that LLMs can learn better reasoning policies in the latent space when given appropriate training signals.
 \citet{saunshi2025reasoninglatentthoughtspower} Demonstrated that the critical impact of model capabilities lies in its depth instead of parameter size.
 In this way, they proposed \textit{Looped Transformer}, which generated latent thoughts and simulated Chain-of-Thought reasoning procedures internally.
 They also pretrained a 3.5B model that might compete with 50B ones.
 
 In contrast, our work focuses on the practical implementation of latent reasoning, instead of cold-start training, which is done by~\citeauthor{saunshi2025reasoninglatentthoughtspower}.
-Our paradigm in feasibility and stability stands in the approach to training the model without specifically designed trajectories, e.g., stepping guidance, from a production-level model via small injection with VAE and gates.
+Our paradigm for feasibility and stability is based on the approach of training the model without specifically designed trajectories, such as stepping guidance, from a production-level model via small injections with VAE and gates.
 It also combines the advances of explicit reasoning models and large-scale reinforcement learning objectives.
 At the same time, prior work mainly focused on producing the latent reasoning space, and small-scale usages primarily based on SFT\@.
