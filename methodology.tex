@@ -1,6 +1,6 @@
 We first introduce the general structure of modern large language models (LLMs) to demonstrate our approach and paradigm better.
 
-Modern LLMs involve a Embedding layer; a core Transformer, including Self-Attention and Feed-Forward Network (FFN); and the Output linear layer which projects the latent state vector of $\mathrm{embed\_\dim}$ to probability distribution of $\mathrm{vocab\_size}$ layers, as we denote them $\boldsymbol{E}$, $\boldsymbol{M}_n$ and $\boldsymbol{O}$ respectively, which $n$ indicates the layer of hidden state~\citep{DBLP:journals/corr/VaswaniSPUJGKP17, radford2019language}.
+Modern LLMs involve a Embedding layer; a core Transformer, including Self-Attention and Feed-Forward Network (FFN); and the Output linear layer which projects the latent state vector of $\mathrm{embed\_\dim}$ to probability distribution of $\mathrm{vocab\_size}$ layers, as we denote them $\boldsymbol{E}$, $\boldsymbol{M}_n$ and $\boldsymbol{O}$ respectively, which $n$ indicates the layer of hidden state~\citep{NIPS2017_3f5ee243, radford2019language}.
 
 \subsection{Model Architecture}\label{subsec:architecture}
 
@@ -9,11 +9,11 @@ Specifically, the latent vector we chose to extract activates the $n_0$-th decod
 
 We preliminarily perform prefilling by the question with the length $q_0$ into the model and get the prefilled KV Cache~\citep{pope2022efficientlyscalingtransformerinference} and the probability distribution of the answer's first token $t_{q_0+1}$ (starting to count from $t_1$).
 
-After extracting the hidden state $\boldsymbol{h}_{n_0,q_0}$ (where $n_0$ denotes the layer number of the Transformer and $q_0$ denotes question length), we deliver the state to a Variational Autoencoder~\citep{DBLP:journals/corr/abs-1906-02691}, and produce a vector for storage with length dimension of $\mathrm{compressed\_\dim}$.
+After extracting the hidden state $\boldsymbol{h}_{n_0,q_0}$ (where $n_0$ denotes the layer number of the Transformer and $q_0$ denotes question length), we deliver the state to a Variational Autoencoder~\citep{2019kingma2019introduction}, and produce a vector for storage with length dimension of $\mathrm{compressed\_\dim}$.
 
 \subsubsection{Variational Autoencoder}\label{subsubsec:vae-layer}
 
-We use Variational Autoencoder (VAE)~\citep{DBLP:journals/corr/abs-1906-02691} to compress and uncompress the hidden state token $\boldsymbol{h}_{n,k}$, which is an $l_h$-dimensional vector, to an $l_c$-dimensional vector and then back to $l_h$.
+We use Variational Autoencoder (VAE)~\citep{2019kingma2019introduction} to compress and uncompress the hidden state token $\boldsymbol{h}_{n,k}$, which is an $l_h$-dimensional vector, to an $l_c$-dimensional vector and then back to $l_h$.
 The VAE layer compresses the hidden state to a lower dimension and then expands it back to its original size.
 The shape of the VAE layer in our work can be described in Figure~\ref{fig:vae}.
 
@@ -43,7 +43,7 @@ We store it in each operation and concatenate these vectors into a matrix subseq
 Our model introduces the update gate and the Dynamic Current Step Mixing Gate.
 
 \begin{enumerate}
-    \item \textbf{Update Gate.} Inspired by Gated Recurrent Unit (GRU)~\citep{zhang2023dive_gru, DBLP:journals/corr/ChungGCB14, DBLP:journals/corr/ChoMBB14}, the update gate is used to increase its contextual consistency in latent space, but the value of the gate is derived from the sequence.
+    \item \textbf{Update Gate.} Inspired by Gated Recurrent Unit (GRU)~\citep{zhang2023dive_gru, journals/corr/ChungGCB14, cho-etal-2014-properties}, the update gate is used to increase its contextual consistency in latent space, but the value of the gate is derived from the sequence.
     We denote it as $\boldsymbol{g}_t$, and its derivation procedure can be described in Equation (not yet).
     We initialize it to all zeros, i.e., initially the model is equivalent to the original one, but it evolves as $\boldsymbol{g}$ moves away from $\boldsymbol{0}$.
     \item \textbf{Dynamic Current-Step-Mixing Gate (DMG).} The injection ratio of the latent state vector needs to vary depending on the next token, yet directly applying one fixed gate for all cannot fit this need.
@@ -106,8 +106,8 @@ This process iteratively updates the attention context and position encoding, en
 
 \subsection{Training}\label{subsec:training}
 
-It is hard for us to train models in a budget-tight scenario, so we adapted Low-Rank Adaptation (LoRA)~\citep{DBLP:journals/corr/abs-2106-09685} to our model.
-We utilize the DAPO algorithm as our reinforcement learning framework; however, the entire procedure differs slightly from the original DAPO.
+It is hard for us to train models in a budget-tight scenario, so we adapted Low-Rank Adaptation (LoRA)~\citep{hu2022lora} to our model.
+We utilize the DAPO algorithm as our reinforcement learning framework; however, the entire procedure differs slightly from the original DAPO\@.
 The whole training procedure is described in Algorithm~\ref{alg:training}.
 
 \begin{algorithm}

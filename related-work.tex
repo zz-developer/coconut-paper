@@ -1,10 +1,10 @@
 \paragraph{Explicit Reasoning Models and Large-scale Reinforcement Learning}
 
 Advances in \textit{explicit} reasoning models, including OpenAI o1 \& o3~\citep{openai2025o3o4mini, openai2024o1} and DeepSeek R1~\citep{deepseekai2025deepseekr1incentivizingreasoningcapability}, demonstrated their strong ability in mathematical reasoning.
-Their work mainly focused on scaling up test-time computation by generating long Chain of Thought (CoT)~~\citep{DBLP:journals/corr/abs-2201-11903} text sequences including symbolic inference and reflection.
+Their work mainly focused on scaling up test-time computation by generating long Chain of Thought (CoT)~~\citep{NEURIPS2022_9d560961} text sequences including symbolic inference and reflection.
 
 Advances in these models can't leave out the strong power of large-scale reinforcement learning paradigm, which has been widely used in LLMs.
-\citet{ouyang2022traininglanguagemodelsfollow} showed how GPT-3~\citep{kojima2023largelanguagemodelszeroshot} can be fine-tuned with reinforcement learning via Proximal Policy Optimization (PPO)~\citet{DBLP:journals/corr/SchulmanWDRK17}, which optimizes the agent's policy by maximizing the expected reward while ensuring the new policy does not deviate excessively from the old policy.
+\citet{ouyang2022traininglanguagemodelsfollow} showed how GPT-3~\citep{NEURIPS2022_8bb0d291} can be fine-tuned with reinforcement learning via Proximal Policy Optimization (PPO)~\citet{DBLP:journals/corr/SchulmanWDRK17}, which optimizes the agent's policy by maximizing the expected reward while ensuring the new policy does not deviate excessively from the old policy.
 \citet{shao2024deepseekmathpushinglimitsmathematical} Proposed Group Relative Policy Optimization (GRPO), which overcame the limitations of PPO, including the need for a large number of samples and the difficulty of tuning hyperparameters.
 \citet{yu2025dapoopensourcellmreinforcement} Demonstrated the effectiveness of Decoupled Clip and Dynamic Sampling Policy Optimization (DAPO) in large-scale reinforcement learning, which performed best in several benchmarks on Qwen2.5-32B~\citet{qwen2.5} solely based on pure reinforcement learning and the base instruction model of Qwen2.5-32B~\citep{qwen2.5}.
 
