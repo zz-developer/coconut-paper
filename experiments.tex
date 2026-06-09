@@ -1,14 +1,14 @@
 \subsection{Setup}\label{subsec:setup}
 
-\paragraph{Base Model} We use Qwen3-4B~\citep{qwen2, qwen2.5, qwen3} as our base model, which is a 4B-parameter model with $24$ layers.
-DeepSeek distilled the model into an explicit reasoning model~\citep{deepseekai2025deepseekr1incentivizingreasoningcapability}, which is our comparison baseline.
+We use Qwen2.5-1.7B~\citep{qwen2, qwen2.5} as our base model, which is a 1.5B-parameter model with $32$ layers.
+Since Qwen3-1.7B can be altered in both reasoning mode and non-reasoning mode, we conduct the reinforcement learning training on the non-reasoning mode, demonstrating the feasibility of our methodology on general-purpose models, and compare the result with the reasoning mode.
+Except for the reasoning mode itself, we also compare the performance with the distillation method from DeepSeek R1~\citep{deepseekai2025deepseekr1incentivizingreasoningcapability}.
 
-\paragraph{Baselines} We compare our model with the following baselines:
+We trained our model with Low-Rank Adaption (LoRA)~\citep{hu2022lora} adaption to reduce the training overhead, and successfully trained the model on single GeForce RTX 4090 with 24GB memory.
+We adapted PiSSA~\citep{NEURIPS2024_db36f4d6} with $32$ iterations in initialization, and set the rank $16$, LoRA alpha $32$, and LoRA dropout $0.01$.
 
-\begin{itemize}
-    \item \textbf{Qwen3-1.7B}: The original model.
-    \item Distillation method from~\citet{deepseekai2025deepseekr1incentivizingreasoningcapability} performed on Qwen3-4B.
-    \item The original model with DAPO~\citep{yu2025dapoopensourcellmreinforcement} objective solely.
-    \item Our model with DAPO algorithm, gating mechanism, and VAE layer.
-    \item The original model with VAPO~\citep{yue2025vapoefficientreliablereinforcement} objective solely.
-\end{itemize}
+\subsection{Datasets}\label{subsec:datasets}
+
+We mixed the training dataset with OpenR1 Math 220k~\citep{openr1}, DAPO Math 17k~\citep{yu2025dapoopensourcellmreinforcement}, and MATH~\citep{NEURIPS_DATASETS_AND_BENCHMARKS2021_be83ab3e}.
+We preprocessed those datasets to remove the original reasoning text, leaving only the question and answer pairs.
+The training dataset contains roughly 1.88 million samples, and we randomly select about 100 questions in each sample.

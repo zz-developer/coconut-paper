@@ -1,87 +1,86 @@
 \documentclass{article} % For LaTeX2e
-\usepackage{times,iclr2025_conference}
+\usepackage{times,iclr2026_conference}
 
-% Optional math commands from https://github.com/goodfeli/dlbook_notation.
-\input{math_commands}
+% % Optional math commands from https://github.com/goodfeli/dlbook_notation.
+% % \input{math_commands}
 
 \usepackage{hyperref}
 \usepackage{url}
 \usepackage{graphicx}
 \usepackage{mathtools}
-\usepackage{siunitx}
-\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
 
 
-\title{Should Have a Better Title}
+% % Authors must not appear in the submitted version. They should be hidden
+% % as long as the \iclrfinalcopy macro remains commented out below.
+% % Non-anonymous submissions will be rejected without review.
 
-% Authors must not appear in the submitted version. They should be hidden
-% as long as the \iclrfinalcopy macro remains commented out below.
-% Non-anonymous submissions will be rejected without review.
+\iclrfinalcopy
 
-%\iclrfinalcopy
+% \usepackage[preprint]{neurips_2025}
+
+
+% to compile a preprint version, e.g., for submission to arXiv, add add the
+% [preprint] option:
+%     \usepackage[preprint]{neurips_2025}
+
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+%     \usepackage[final]{neurips_2025}
+
+
+% to avoid loading the natbib package, add option nonatbib:
+%    \usepackage[nonatbib]{neurips_2025}
+
+
+% \usepackage[utf8]{inputenc} % allow utf-8 input
+% \usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+% \usepackage{hyperref}       % hyperlinks
+% \usepackage{url}            % simple URL typesetting
+% \usepackage{booktabs}       % professional-quality tables
+% \usepackage{amsfonts}       % blackboard math symbols
+% \usepackage{nicefrac}       % compact symbols for 1/2, etc.
+% \usepackage{microtype}      % microtypography
+% \usepackage{xcolor}         % colors
+
+\title{Scaling up Training Continuous Latent Reasoning: On the Power of Soft Thinking and Reinforcement Learning}
+
 
 \author{%
     Zheheng Zhang \\
     Zhenhai High School \\
     Zhenhai, Ningbo, Zhejiang, China, 315200 \\
-    \texttt{elliot-zzh@proton.me}
+    \texttt{elliot\_zh@proton.me}
     \And
     Chengyu Wu \\
     Zhenhai High School \\
     Zhenhai, Ningbo, Zhejiang, China, 315200 \\
     \texttt{7086cmd@gmail.com}
+    \AND
+    Mingshu Chen \\
+    Fudan University \\
+    Shanghai, China, 200433 \\
+    \And
+    Chengyang Zhu \\
+    Fudan University \\
+    Shanghai, China, 200433
 }
 
 % The \author macro works with any number of authors. There are two commands
 % used to separate the names and addresses of multiple authors: \And and \AND.
 %
 % Using \And between authors leaves it to \LaTeX{} to determine where to break
-% the lines. Using \AND forces a line break at that point. So, if \LaTeX{}
-% puts 3 of 4 authors' names on the first line, and the last on the second
+% the lines. Using \AND forces a linebreak at that point. So, if \LaTeX{}
+% puts 3 of 4 authors names on the first line, and the last on the second
 % line, try using \AND instead of \And before the third author name.
 
-\newcommand{\fix}{\marginpar{FIX}}
-\newcommand{\new}{\marginpar{NEW}}
+% \newcommand{\fix}{\marginpar{FIX}}
+% \newcommand{\new}{\marginpar{NEW}}
 
 %\iclrfinalcopy % Uncomment for camera-ready version, but NOT for submission.
-
 \begin{document}
-
     \maketitle
-
     \begin{abstract}
-        We proposed a novel paradigm for implementing latent reasoning by combining DAPO-like reinforcement learning and special gating units.
-        In this way, we transformed text-based explicit reasoning models to latent reasoning models, progressively and practically.
-        Initial experiments demonstrate its feasibility, with significant stability and the least extra training overhead by parallelism and minimal changes, while holding full potential to scale up.
+        We proposed a novel paradigm for empowering reasoning LLMs by combining Soft Thinking, a variant of continuous reasoning, with Large Scale Reinforcement Learning. Unlike previous methods of with-training continuous reasoning, our approach directly demonstrates state-of-the-art performance on difficult reasoning-required benchmarks such as AIME and MATH-500, showcasing significant stability and full potential to scaling up.
+        Our code is available at \href{https://github.com/elliot-zzh/from-transparent-to-opaque}{GitHub} and benchmark dataset available at \href{https://huggingface.co/datasets/ethangoh7086cmd/st-train-all}{HuggingFace}.
     \end{abstract}
-
-
-    \section{Introduction}\label{sec:intro}
-
-    \textit{Waiting for rewrite.}
-
-    \section{Related Work}\label{sec:related-work}
-    \input{related-work}
-
-    \section{Methodology}\label{sec:methodology}
-    \input{methodology}
-
-    \section{Experiments}\label{sec:expr}
-    \input{experiments}
-
-    \section{Discussion}\label{sec:discussion}
-    \input{discussions}
-
-    \section{Conclusion}\label{sec:conclusion}
-
-    In this paper, we proposed\ldots
-
-    \bibliographystyle{abbrvnat}  % or another appropriate style
-    \bibliography{main}
-
-    \appendix
-
-    \input{appendices/methodology}
-    \input{appendices/experiments}
-
 \end{document}

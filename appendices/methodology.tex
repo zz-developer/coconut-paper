@@ -5,31 +5,28 @@
 In this section, we will provide a detailed description of the forward propagation process in our proposed model.
 The procedure of forward propagation is shown in Algorithm~\ref{alg:model-forward}.
 
-\begin{algorithm}[H]
+\begin{algorithm}
     \caption{\textsc{ModelForward} Procedure\label{alg:model-forward}}
     \KwIn{Hidden state $\boldsymbol{h}$, attention mask $\boldsymbol{m}$, position $\boldsymbol{p}$, KV cache $\boldsymbol{k}$ (optional), injected hidden state $\tilde{\boldsymbol{h}}$ (optional), injection function $f_{\text{inject}}$ (optional), start layer $l_s$, end layer $l_e$, extraction index $l_x$ (optional)}
     \KwOut{Final hidden state, optionally intermediate state at layer $l_x$}
 
-    Compute causal mask $\boldsymbol{m}_c \leftarrow \textsc{UpdateCausalMask}(\boldsymbol{m}, \boldsymbol{h}, \boldsymbol{p}, \boldsymbol{k})$\;
-    Compute positional embedding $\boldsymbol{e}_p \leftarrow \textsc{RotaryEmbed}(\boldsymbol{h}, \boldsymbol{p})$\;
-
     \For{$i \gets l_s$ \KwTo $l_e$}{
-        \If{$\tilde{\boldsymbol{h}} \neq \emptyset$ \textbf{and} $i = l_{\text{inject}}$}{
-            \uIf{$f_{\text{inject}} = \emptyset$}{
+        \If{$\tilde{\boldsymbol{h}} \neq \emptyset$ \And $i = l_{\mathrm{inject}}$}{
+            \uIf{$f_{\mathrm{inject}} = \emptyset$}{
                 $\boldsymbol{h} \leftarrow \textsc{Gater}(\tilde{\boldsymbol{h}}, \boldsymbol{h})$\;
             }
             \Else{
-                $\boldsymbol{h} \leftarrow f_{\text{inject}}(\tilde{\boldsymbol{h}}, \boldsymbol{h})$\;
+                $\boldsymbol{h} \leftarrow f_{\mathrm{inject}}(\tilde{\boldsymbol{h}}, \boldsymbol{h})$\;
             }
         }
 
-        $\boldsymbol{h} \leftarrow \textsc{TransformerLayer}_i(\boldsymbol{h}, \boldsymbol{m}_c, \boldsymbol{p}, \boldsymbol{k}, \boldsymbol{e}_p)$\;
+        $\boldsymbol{h} \leftarrow \textsc{TransformerLayer}_i(\boldsymbol{h}, \boldsymbol{m}_c, \boldsymbol{p})$\;
 
         \If{$i = l_x$}{
-            $\boldsymbol{h}_{\text{spec}} \leftarrow \boldsymbol{h}$\;
+            $\boldsymbol{h}_{\mathrm{spec}} \leftarrow \boldsymbol{h}$\;
         }
     }
 
-    \lIf{$l_x \neq \emptyset$}{\Return{$\boldsymbol{h}, \boldsymbol{h}_{\text{spec}}$}}
+    \lIf{$l_x \neq \emptyset$}{\Return{$\boldsymbol{h}, \boldsymbol{h}_{\mathrm{spec}}$}}
     \lElse{\Return{$\boldsymbol{h}$}}
 \end{algorithm}

@@ -1,202 +1,95 @@
-We first introduce the general structure of modern large language models (LLMs) to demonstrate our approach and paradigm better.
+In this section, describe our training paradigm that leverages the Reinforcement Learning (RL) paradigm to solidify the \emph{Soft Thinking}~\citep{zhang2025softthinkingunlockingreasoning} paradigm, which uses concept tokens to represent the latent reasoning steps of the model, retaining the full probabilities of tokens rather than decoding to a discrete one.
 
-Modern LLMs involve a Embedding layer; a core Transformer, including Self-Attention and Feed-Forward Network (FFN); and the Output linear layer which projects the latent state vector of $\mathrm{embed\_\dim}$ to probability distribution of $\mathrm{vocab\_size}$ layers, as we denote them $\boldsymbol{E}$, $\boldsymbol{M}_n$ and $\boldsymbol{O}$ respectively, which $n$ indicates the layer of hidden state~\citep{NIPS2017_3f5ee243, radford2019language}.
+\subsection{Modified Soft Thinking}\label{subsec:modified-soft-thinking}
 
-\subsection{Model Architecture}\label{subsec:architecture}
+\paragraph{Preliminaries.}
 
-We used layers in the middle of the Transformer core to enter the latent reasoning space to avoid breaking special usage in final layers~\citep{saunshi2025reasoninglatentthoughtspower}.
-Specifically, the latent vector we chose to extract activates the $n_0$-th decoder layer within the $n$-layer decoder.
+We briefly review core concepts of Soft Thinking proposed
+by \citeauthor{zhang2025softthinkingunlockingreasoning}, which serves the foundation of our work.
 
-We preliminarily perform prefilling by the question with the length $q_0$ into the model and get the prefilled KV Cache~\citep{pope2022efficientlyscalingtransformerinference} and the probability distribution of the answer's first token $t_{q_0+1}$ (starting to count from $t_1$).
-
-After extracting the hidden state $\boldsymbol{h}_{n_0,q_0}$ (where $n_0$ denotes the layer number of the Transformer and $q_0$ denotes question length), we deliver the state to a Variational Autoencoder~\citep{2019kingma2019introduction}, and produce a vector for storage with length dimension of $\mathrm{compressed\_\dim}$.
-
-\subsubsection{Variational Autoencoder}\label{subsubsec:vae-layer}
-
-We use Variational Autoencoder (VAE)~\citep{2019kingma2019introduction} to compress and uncompress the hidden state token $\boldsymbol{h}_{n,k}$, which is an $l_h$-dimensional vector, to an $l_c$-dimensional vector and then back to $l_h$.
-The VAE layer compresses the hidden state to a lower dimension and then expands it back to its original size.
-The shape of the VAE layer in our work can be described in Figure~\ref{fig:vae}.
-
-\begin{figure}
-    \centering
-    \includegraphics[width=0.6\textwidth]{./figures/vae_structure}
-    \caption{The VAE layer.
-    We first compress the hidden state to a lower dimension (expand into $4$ times the original size and then compress), extracting the compressed vector, and use the symmetric approach to expand it back to the original dimension.}
-    \label{fig:vae}
-\end{figure}
-
-We pre-trained the VAE on the online-generated activation of $1024$ consequences, and the validation loss decreased steadily, proving that the VAE's pre-training process requires little data.
-In the appendix, we provide supplemental data to demonstrate the effectiveness of this approach.
-
-\paragraph{Long-term Cache}
-
-We will store the latent space activation output from later $n_0$ for further parallel training.
-Yet directly storing the raw vector of $\mathrm{embed\_\dim}$ could be space-consuming.
-(See \footnote{Consider a sample batch size of $1024$, sequence length $1024$, and embedding dimension $1536$. Each element occupies \qty{2}{bytes} (BF16), resulting in $1024\times1024\times1536\times2 = 2^{31.5}$ bytes, or approximately \qty{2.8}{GB} of VRAM.
-In contrast, if we adapt the VAE layer to compress the hidden state to $256$ dimensions, we only need $1024\times1024\times256\times2 = 2^{29}$ bytes, or approximately \qty{512}{MB} of VRAM.
-} for quantitative analysis of the space consumption, and we have provided data in~\ref{subsec:vae-layer-detailed-exprs}.)
-
-We store it in each operation and concatenate these vectors into a matrix subsequently as a hidden state.
-
-\subsubsection{Gates}\label{subsubsec:gating-mechanism}
-
-Our model introduces the update gate and the Dynamic Current Step Mixing Gate.
-
-\begin{enumerate}
-    \item \textbf{Update Gate.} Inspired by Gated Recurrent Unit (GRU)~\citep{zhang2023dive_gru, journals/corr/ChungGCB14, cho-etal-2014-properties}, the update gate is used to increase its contextual consistency in latent space, but the value of the gate is derived from the sequence.
-    We denote it as $\boldsymbol{g}_t$, and its derivation procedure can be described in Equation (not yet).
-    We initialize it to all zeros, i.e., initially the model is equivalent to the original one, but it evolves as $\boldsymbol{g}$ moves away from $\boldsymbol{0}$.
-    \item \textbf{Dynamic Current-Step-Mixing Gate (DMG).} The injection ratio of the latent state vector needs to vary depending on the next token, yet directly applying one fixed gate for all cannot fit this need.
-    Therefore, we add a DMG to gate the Update Gate according to both the latent state vector and the embedding of the next token.
-    We fill the DMG with full zero initializations, which aims to stabilize the training process.
-    The DMG is composed of a linear layer and a sigmoid activation function.
-    The linear layer projects the concatenated vector of the hidden state vector and the embedding vector to a vector half the size of the original.
-\end{enumerate}
-
-The processed vector $\boldsymbol{h}^\prime_{n,k}$ after the VAE layer is passed to several gates, as we denote in Equation~\ref{eq:gate}.
+Let $ct \coloneqq p \in \Delta^{\left\lvert V\right\rvert - 1}$ denotes the ``probability distribution over the vocabulary'' at any intermediate step
+(i.e., reasoning step) of the language model, which may allow the model to explore different paths simultaneously.
+By convexly combining all embedding vectors, as well as concept tokens here, we can obtain the ``continuous concept space,'' as denoted in~\ref{eq:concept-space}
 
 \begin{equation}
-    \boldsymbol{h}^\prime_{n,k} = \boldsymbol{h}^\prime_{n,k-1} \odot \boldsymbol{g} \odot \mathrm{DMG}(\boldsymbol{e}_k) \times
-    s_\mathrm{inj}
-    + \left(1-\boldsymbol{g}\right) \odot \boldsymbol{e}_k
-    \label{eq:gate}
+    \mathcal{C} \;=\;
+    \Bigl\{\,\sum\nolimits_{k=1}^{|V|}\alpha_k\,e(k)\;:\;
+    \alpha\in\Delta^{|V|-1}\Bigr\}\subset\mathbb{R}^d ,
+    \label{eq:concept-space}
 \end{equation}
 
-Where $\boldsymbol{e}_k=\mathrm{Embedding}(\boldsymbol{t}_k)$; $\boldsymbol{t}_k$ denotes the token of the sequence with position $k$, and $s_\mathrm{inj}$ denotes the injection scalar, which is a constant scalar to bridge the difference in order of magnitude between the gating value and the result of Dynamic Current-Step-Mixing Gate, which will be described in Section~\ref{subsubsec:gating-mechanism}.
+At each step, the model can produce a concept token rather than explicit decoded token, and we can inject the concept token back into the model, as denoted in~\ref{eq:soft-thinking-concept-token}.
 
-\subsection{Inference}\label{subsec:inference}
+\begin{equation}
+    \tilde{e}_{\mathrm{next}}
+    = \sum_{k=1}^{|V|} ct[k]\,e(k) = \sum_{k=1}^{|V|} p[k]\,e(k)\in\mathcal{C}.
+    \label{eq:soft-thinking-concept-token}
+\end{equation}
 
-\newcommand{\initializedzero}{\boldsymbol{0}}
+\paragraph{Refinement.}
 
-We describe the inference process incorporating latent state injection and VAE-based compression in Algorithm~\ref{alg:inference-procedure}.
-At each generation step, the model extracts the current hidden state, compresses it via a Variational Autoencoder (VAE), and stores the latent representation in a cache.
-The latest latent code is then decompressed and optionally refined through reasoning layers before being used to compute the logits for the next token.
-This process iteratively updates the attention context and position encoding, enabling latent-informed token generation conditioned on the evolving latent memory.
+We fortuitously found that in the process of computing concept probabilities, changing the order of applying Softmax
+and then gather the logits and apply Softmax, which can slightly improve the model's performance.
 
-\begin{algorithm}[htbp]
-    \caption{Inference with VAE and Latent Injection \label{alg:inference-procedure}}
-    \KwIn{Tokenized input $\boldsymbol{t}_{1:q_0}$, attention mask $\boldsymbol{m}$}
-    \KwOut{Sampled tokens $\boldsymbol{t}_{q_0+1:q}$, log-probabilities, latent cache}
+By applying Softmax later, the numerical stability holds better and reduces extreme parameters, which can eventually
+result to better and more stable reasoning procedures.
 
-    Initialize position index $\boldsymbol{p}$ and KV Cache\;
-    \If{depth $> 0$}{Initialize deep cache stack}
+We load our empirical data in the zero-training stage (i.e., the initial rollout) in \ldots (experiments section not
+conducted yet.)
 
-    Embed input and perform model forward to extract $\boldsymbol{h}_{n_0,q_0}$\;
-    Initialize latent cache $\boldsymbol{z} \leftarrow \initializedzero$ and output buffer $\boldsymbol{t} \leftarrow \initializedzero$\;
+\subsection{Reinforcement Learning}\label{subsec:reinforcement-learning}
 
-    \For{$i \leftarrow 1$ \KwTo max\_length}{
-        Compress latest hidden $\boldsymbol{h}_{n_0,q_0+i-1}$ via VAE and append to $\boldsymbol{z}$\;
-        Uncompress $\boldsymbol{z}_{-1}$ via VAE to obtain $\tilde{\boldsymbol{h}}$\;
-
-        \If{depth $> 0$}{
-            Loop $\tilde{\boldsymbol{h}}$ through $d$ reasoning layers to get updated $\tilde{\boldsymbol{h}}$
-        }
-
-        Compute next-token logits $\boldsymbol{\ell} \leftarrow \mathrm{LMHead}(\tilde{\boldsymbol{h}})$\;
-        Sample token $\boldsymbol{t}_{q_0+i}$ from $\mathrm{TopK}(\mathrm{Softmax}(\boldsymbol{\ell} / T), k)$\;
-
-        Append $\boldsymbol{t}_{q_0+i}$ and log-prob to result\;
-        \If{eot token appears in all sequences}{break}
-
-        Update attention mask and position\;
-        Embed $\boldsymbol{t}_{q_0+i}$ and update hidden via model forward with latent injection
-    }
-    \Return{Sampled tokens, log-probs, latent cache}
-\end{algorithm}
-
-\subsection{Training}\label{subsec:training}
-
-It is hard for us to train models in a budget-tight scenario, so we adapted Low-Rank Adaptation (LoRA)~\citep{hu2022lora} to our model.
-We utilize the DAPO algorithm as our reinforcement learning framework; however, the entire procedure differs slightly from the original DAPO\@.
-The whole training procedure is described in Algorithm~\ref{alg:training}.
-
-\begin{algorithm}
-    \caption{Training Procedure\label{alg:training}}
-    \KwIn{Training data $(x, y)$, sampling model, verifier, parameters}
-    \KwOut{Trained model}
-
-    \SetKwFunction{Sampler}{sampler}
-    \SetKwFunction{Verifier}{verifier}
-
-    Initialize $step \gets 0$\;
-    \While{$step \leq \texttt{total\_steps}$}{
-        \ForEach{$(problems, ans)$ in $\texttt{data\_train}$}{
-            Tokenize problems to $\texttt{input\_ids}$ and $\texttt{attn\_mask}$\;
-
-            Call \Sampler{} and update intermediate results, shown in Algorithm~\ref{alg:inference-procedure}\;
-
-            Compute $correctness\_rewards \gets \Verifier{}(\texttt{res}, ans)$\;
-            Compute $len\_rewards$ from $text\_end\_indices$\;
-            Compute $correctness\_rate$\;
-
-            \If{correct samples too few}{
-                Downsample incorrect results to balance\;
-            }
-
-            Normalize reward: clip too short/long sequences, compute total reward\;
-            Build final training sequence by concatenating $\texttt{input\_ids}$ and $\texttt{res}$\;
-
-            \For{$epoch \gets 1$ \KwTo \texttt{num\_epochs}}{
-                \For{$i \gets 0$ \KwTo $N$ step $\texttt{batch\_size}$}{
-                    Extract a batch of sequence and hidden cache\;
-                    Decode latent via VAE and optionally apply recursive looping\;
-                    Combine token and latent via $\mathrm{Gater}$ to produce training embedding\;
-                    Run model forward to get logits\;
-
-                    Compute $loss$ by mixing DAPO loss and gating value bonus\;
-
-                    Update latent cache randomly for a subset\;
-
-                    Backpropagate and optimize\;
-                }
-            }
-        }
-    }
-    \Return{trained model}
-\end{algorithm}
-
-\subsubsection{Reinforcement Learning}
-
-\paragraph{Training Objective}
-
-We adapt the DAPO~\citep{yu2025dapoopensourcellmreinforcement} algorithm, but we have not implemented the clip mechanism, which is used to clip the reward and penalty to a specific range.
-Hence, we currently use the original DAPO algorithm, which is shown in Equation~\ref{eq:dapoloss}.
-We parallelized several inference procedures simultaneously, preferably $16$ for the same question, and verified the answer~\citep{Kydlicek_Math-Verify_Math_Verification}.
+\paragraph{Algorithm.} We adopt the Clipped IS-weight Policy Optimization (CISPO)~\citep{minimax2025minimaxm1scalingtesttimecompute} algorithm
+in our pipeline, which can be denoted in~\ref{eq:CISPO}.
 
 \begin{equation}
     \begin{aligned}
-        \mathcal{J}_{\mathrm{DAPO}}(\theta) =\quad& \mathbb{E}_{(q,a)\sim \mathcal{D}, \{o_i\}_{i=1}^G\sim \pi_{\theta_\mathrm{old}}(\cdot\mid q)}\\&
-        \frac{1}{\sum_{i=1}^{G}|o_i|}\sum_{i=1}^{G}\sum_{t=1}^{|o_i|} r_{i,t}(\theta) \hat{A}_{i,t}
-        \\
-        \mathrm{subject\ to}\quad& 0< \left|\{o_i\mid\texttt{is\_equivalent}(a,o_i)\}\right|< G,
-        \label{eq:dapoloss}
+    \mathcal{J}_{\mathrm{CISPO}}(\theta) &= \mathbb{E}_{(q,a) \sim \mathcal{D}, \{o_i\}_{i=1}^G \sim \pi_{\theta_{\text{old}}}(\cdot|q)} \\
+    & \left[
+        \frac{1}{\sum_{i=1}^G |o_i|} \sum_{i=1}^G \sum_{t=1}^{|o_i|}
+        \texttt{sg}(\hat{r}_{i,t}(\theta))\hat{A}_{i,t}\log \pi_\theta(o_{i,t} \mid q, o_{i,<t})
+    \right],
     \end{aligned}
+    \label{eq:CISPO}
 \end{equation}
-Where
-\begin{equation}
-    r_{i,t}(\theta)=\frac{\pi_{\theta}(o_{i,t} \mid q, o_{i,<t})}{\pi_{\theta_{\mathrm{old}}}(o_{i,t} \mid q,o_{i,<t})},\quad\hat{A}_{i,t} = \frac{R_i - \mathrm{mean}(\{R_i\}_{i=1}^G)}{\mathrm{std}(\{R_i\}_{i=1}^G)}.
-    \label{eq:advantage_calculation}
-\end{equation}
+where $\texttt{sg}(\cdot)$ denotes the stop-gradient operation, and $\hat{r}_{i,t}(\theta)$ is the clipped IS weight:
 
-\paragraph{Award Mechanism}
+\begin{equation*}
+    \hat{r}_{i,t}(\theta) = \text{clip}\left(r_{
+    i,t}(\theta), 1-\epsilon^{IS}_{low}, 1+\epsilon^{IS}_{high}\right).
+\end{equation*}
 
-We use $\mathrm{reward}_{\mathrm{acc}}$ and $\mathrm{penalty}_{\mathrm{len}}$ to award or penalize in accuracy, according to DAPO~\citep{yu2025dapoopensourcellmreinforcement}.
-The exact value of the reward and penalty will be described in the appendices.
+\paragraph{Reward.} We verify answers~\citep{Kydlicek_Math-Verify_Math_Verification} that is wrapped with \texttt{\textbackslash boxed} block, and set the reward as follows:
 
-\paragraph{Positive-Negative Clipping}
+\begin{equation*}
+    r = \begin{cases}
+        2, & \mathrm{if\ correct} \\
+        -1, & \mathrm{if\ incorrect}
+    \end{cases}
+\end{equation*}
 
-We choose only all the positive samples to eliminate the issue of too many negative samples (each of which is less useful for improving the model) under a budget-tight scenario.
-We randomly select the remaining negative samples in a ratio of $1:1$.
+\subsubsection{Swapping}\label{subsubsec:swapping}
 
-\subsubsection{Time Consistency Regularization}
+In the rollout stage of the GRPO~\citep{shao2024deepseekmathpushinglimitsmathematical} algorithm and its followers such
+as DAPO~\citep{yu2025dapoopensourcellmreinforcement} and CISPO~\citep{minimax2025minimaxm1scalingtesttimecompute},
+to each prompt the algorithms require sampling multiple answers, i.e., doing group sampling, which is a crucial factor of
+more accurate advantage estimation.
+Latest value-model-based algorithms, including PPO~\citep{DBLP:journals/corr/SchulmanWDRK17} leveraged in
+Open-Reasoner-Zero~\citep{hu2025openreasonerzeroopensourceapproach} and
+VAPO~\citep{yue2025vapoefficientreliablereinforcement}, recommend applying group sampling for performance enhancement.
 
-We adopt a mechanism called the ``Gating Value Bonus,'' which allows the model to fully leverage the information from the latent space instead of getting stuck in the local optima of not using the space sufficiently.
+However, just as the Greedy Sampling, the original Soft Thinking sampling holds no diversity, which means that multiple
+sampling will only gain one unique answer, thus making group sampling impossible.
 
-The gating value bonus is a regularization term designed to constrain gating values toward the midpoint, as the formulation is shown in Equation~\ref{eq:gating-value-bonus}.
+To unlock the power of group sampling, we propose a ``swapping'' technique to add diversity to the sampling process.
+Specifically, for a output logits tensor $\boldsymbol{l_{t}}$ on the $t$-th token, perform the following
+computation:
 
-\begin{equation}
-    \mathcal{J}_{\mathrm{gate}}\left(\boldsymbol{g}\right)=\dfrac{1}{\mathrm{output\_dim}}C_0\displaystyle\sum_{i=0}^{\mathrm{output\_dim}}\exp\left[\lambda\left(\dfrac{1}{2}-g_i\right)^2\right]
-    \label{eq:gating-value-bonus}
-\end{equation}
+\begin{gather*}
+    \boldsymbol{p} = \mathrm{Softmax}(\boldsymbol{l}_{t+1} / T, \mathrm{dim}=-1) \\
+    \mathrm{topk\_probs}, \mathrm{topk\_indices} =
+    \mathrm{Topk}(\boldsymbol{p}, k=10) \\
+    \mathrm{token}_{t+1} = \mathrm{MultiNomial}(\mathrm{topk\_probs})
+\end{gather*}
 
-Where $g_i=\boldsymbol{g}\cdot\boldsymbol{e}^{(i)}$, i.e., the $i$-th element of the gate vector $\boldsymbol{g}$, and $C_0$ is a constant to control the scale of the bonus; $\lambda$ is a constant to control the rate of convergence.
+\subsection{Self-Distillation}\label{subsec:self-distillation}
